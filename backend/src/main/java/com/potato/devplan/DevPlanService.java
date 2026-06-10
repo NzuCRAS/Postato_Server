@@ -11,7 +11,9 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
@@ -95,9 +97,30 @@ public class DevPlanService {
             mergeArtifacts(node.getArtifacts(), in.artifacts());
         }
 
-        // 验收点(整列表替换)
+        // 验收点(整列表替换)+ 变更留痕:比对前后,把勾选/取消了哪些点写进工作日志
         if (in.acceptanceCriteria() != null) {
+            Map<String, Boolean> oldState = new HashMap<>();
+            for (DevPlan.AcceptanceItem a : node.getAcceptanceCriteria()) {
+                oldState.put(a.getText(), a.isChecked());
+            }
             node.setAcceptanceCriteria(new ArrayList<>(in.acceptanceCriteria()));
+
+            List<String> nowChecked = new ArrayList<>();
+            List<String> nowUnchecked = new ArrayList<>();
+            for (DevPlan.AcceptanceItem a : node.getAcceptanceCriteria()) {
+                Boolean was = oldState.get(a.getText());
+                if (a.isChecked() && !Boolean.TRUE.equals(was)) nowChecked.add(a.getText());
+                if (!a.isChecked() && Boolean.TRUE.equals(was)) nowUnchecked.add(a.getText());
+            }
+            if (!nowChecked.isEmpty() || !nowUnchecked.isEmpty()) {
+                StringBuilder sb = new StringBuilder();
+                if (!nowChecked.isEmpty()) sb.append("勾选验收点:").append(String.join("、", nowChecked));
+                if (!nowUnchecked.isEmpty()) {
+                    if (sb.length() > 0) sb.append(";");
+                    sb.append("取消验收点:").append(String.join("、", nowUnchecked));
+                }
+                node.getLog().add(log(actor, "acceptance", sb.toString(), null, null, null, null));
+            }
         }
 
         // 仅补日志/commit(没有状态变更时)

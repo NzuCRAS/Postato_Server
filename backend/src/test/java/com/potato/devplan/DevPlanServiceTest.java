@@ -125,4 +125,18 @@ class DevPlanServiceTest {
         // 日志仍在(根节点的"初始分解"日志没丢)
         assertThat(archived.getRoot().getLog()).isNotEmpty();
     }
+
+    @Test
+    void checking_acceptance_appends_log_entry() {
+        reqWithPlan(); // node_1 带验收点「必填校验」(未勾)
+        DevPlan.AcceptanceItem item = new DevPlan.AcceptanceItem();
+        item.setText("必填校验");
+        item.setChecked(true);
+        UpdateNodeRequest in = new UpdateNodeRequest(null, null, null, null, null, null, List.of(item));
+        UpdateResult r = service.updateNode("r1", "node_1", in, "human");
+        DevPlan.LogEntry last = r.node().getLog().get(r.node().getLog().size() - 1);
+        assertThat(last.getAction()).isEqualTo("acceptance");
+        assertThat(last.getSummary()).contains("勾选").contains("必填校验");
+        assertThat(last.getActor()).isEqualTo("human");
+    }
 }
