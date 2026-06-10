@@ -53,4 +53,21 @@ public final class ArchNodeDtos {
             @JsonProperty("related_docs") List<String> relatedDocs,
             @JsonProperty("related_code") List<String> relatedCode) {
     }
+
+    /** 递归 upsert 一棵结构子树(管理树/任意层):按 (projectId,path) 幂等,自动按父推断 layer。 */
+    public record UpsertTreeRequest(
+            @JsonProperty("parent_path") String parentPath,   // 空=挂到根(建 L0)
+            List<TreeNode> nodes) {
+    }
+
+    public record TreeNode(
+            String title,
+            String layer,                // 显式优先;缺省按父层 +1(根=L0)
+            String type,
+            String description,
+            List<String> tags,
+            @JsonProperty("related_docs") List<String> relatedDocs,
+            @JsonProperty("related_code") List<String> relatedCode,
+            List<TreeNode> children) {
+    }
 }

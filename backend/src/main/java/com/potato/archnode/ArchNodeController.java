@@ -76,4 +76,13 @@ public class ArchNodeController {
         permissionService.check(user, "arch", "sync");
         return service.sync(pid, req.repoId(), req.modules());
     }
+
+    /** 写入一棵结构子树(管理树或任意层):递归 upsert、自动按父推断 layer、按 path 幂等。MCP upsert_architecture 的后端。 */
+    @PostMapping("/upsert-tree")
+    public Map<String, Object> upsertTree(@AuthenticationPrincipal User user,
+                                          @PathVariable String pid,
+                                          @RequestBody ArchNodeDtos.UpsertTreeRequest req) {
+        permissionService.check(user, "arch", "edit_management");
+        return service.upsertTree(pid, req.parentPath(), req.nodes());
+    }
 }

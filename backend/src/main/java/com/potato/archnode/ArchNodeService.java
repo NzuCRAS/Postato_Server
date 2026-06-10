@@ -191,6 +191,80 @@ public class ArchNodeService {
         return Map.of("upserted", upserted, "archived", archived, "skipped", skipped);
     }
 
+    /**
+     * 递归 upsert 一棵结构子树(管理树或任意层)。parent_path 为空挂到根;
+     * 按 (projectId, path) 幂等:命中则更新字段并复活(保留原 source),否则新建 source=manual。
+     * layer 显式优先,缺省按父层 +1(根 = L0)。逐节点即时保存以便子节点取到父 id(自动建中间层)。
+     * 返回 {created, updated, paths}。
+     */
+    public Map<String, Object> upsertTree(String projectId, String parentPath, List<ArchNodeDtos.TreeNode> nodes) {
+        ArchNode parent = null;
+        if (parentPath != null && !parentPath.isBlank()) {
+            parent = repository.findByProjectIdAndPath(projectId, parentPath)
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "父路径不存在: " + parentPath));
+        }
+        List<String> paths = new ArrayList<>();
+        int[] counts = {0, 0}; // [created, updated]
+        if (nodes != null) {
+            for (ArchNodeDtos.TreeNode tn : nodes) {
+                upsertRecursive(projectId, parent, tn, paths, counts);
+            }
+        }
+        Map<String, Object> res = new HashMap<>();
+        res.put("created", counts[0]);
+        res.put("updated", counts[1]);
+        res.put("paths", paths);
+        return res;
+    }
+
+    private void upsertRecursive(String projectId, ArchNode parent, ArchNodeDtos.TreeNode tn,
+                                 List<String> paths, int[] counts) {
+        if (tn.title() == null || tn.title().isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "节点标题必填");
+        }
+        String parentPath = parent == null ? "" : parent.getPath();
+        String parentId = parent == null ? null : parent.getId();
+        String parentLayer = parent == null ? null : parent.getLayer();
+        String path = parentPath + "/" + tn.title().trim();
+
+        ArchNode n = repository.findByProjectIdAndPath(projectId, path).orElse(null);
+        Instant now = Instant.now();
+        if (n == null) {
+            n = new ArchNode();
+            n.setProjectId(projectId);
+            n.setPath(path);
+            n.setSource("manual");
+            n.setCreatedAt(now);
+            counts[0]++;
+        } else {
+            counts[1]++;
+        }
+        n.setParentId(parentId);
+        n.setStatus("active");   // 复活被归档的同路径节点
+        n.setTitle(tn.title().trim());
+        n.setLayer(tn.layer() != null && !tn.layer().isBlank() ? tn.layer() : autoLayer(parentLayer));
+        if (tn.type() != null) n.setType(tn.type());
+        if (tn.description() != null) n.setDescription(tn.description());
+        if (tn.tags() != null) n.setTags(tn.tags());
+        if (tn.relatedDocs() != null) n.setRelatedDocs(tn.relatedDocs());
+        if (tn.relatedCode() != null) n.setRelatedCode(tn.relatedCode());
+        n.setUpdatedAt(now);
+        ArchNode saved = repository.save(n);
+        paths.add(path);
+
+        if (tn.children() != null) {
+            for (ArchNodeDtos.TreeNode child : tn.children()) {
+                upsertRecursive(projectId, saved, child, paths, counts);
+            }
+        }
+    }
+
+    /** 缺省层级:根(无父)= L0,否则父层 +1。 */
+    private String autoLayer(String parentLayer) {
+        if (parentLayer == null) return "L0";
+        return nextLayer(parentLayer);
+    }
+
     private String nextLayer(String parentLayer) {
         if ("L0".equals(parentLayer)) return "L1";
         if ("L1".equals(parentLayer)) return "L2";

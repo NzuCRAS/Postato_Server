@@ -10,11 +10,13 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.tuple;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
@@ -122,5 +124,47 @@ class ArchNodeServiceTest {
         assertThat(res.get("upserted")).isEqualTo(1);
         assertThat(res.get("archived")).isEqualTo(1);
         assertThat(stale.getStatus()).isEqualTo("archived");
+    }
+
+    @Test
+    void upsertTree_creates_nested_tree_with_auto_layer() {
+        List<ArchNode> saved = new ArrayList<>();
+        when(repo.findByProjectIdAndPath(any(), any())).thenReturn(Optional.empty());
+        when(repo.save(any())).thenAnswer(i -> {
+            ArchNode a = i.getArgument(0);
+            if (a.getId() == null) a.setId("gen" + a.getPath());
+            saved.add(a);
+            return a;
+        });
+        ArchNodeDtos.TreeNode child = new ArchNodeDtos.TreeNode("用户域", null, "domain", null, null, null, null, null);
+        ArchNodeDtos.TreeNode root = new ArchNodeDtos.TreeNode("Potato 平台", null, "system", null, null, null, null, List.of(child));
+        var res = service.upsertTree("p", null, List.of(root));
+        assertThat(res.get("created")).isEqualTo(2);
+        assertThat(res.get("updated")).isEqualTo(0);
+        // 根自动 L0、子自动 L1(父+1);子的 parentId = 父保存后的 id(逐节点即时保存)
+        assertThat(saved).extracting(ArchNode::getPath, ArchNode::getLayer)
+                .containsExactly(tuple("/Potato 平台", "L0"), tuple("/Potato 平台/用户域", "L1"));
+        assertThat(saved.get(1).getParentId()).isEqualTo("gen/Potato 平台");
+    }
+
+    @Test
+    void upsertTree_idempotent_updates_existing_and_keeps_source() {
+        ArchNode existingRoot = node("r", "/Potato 平台", "L0", null);
+        existingRoot.setSource("manual");
+        existingRoot.setCreatedAt(Instant.now());
+        when(repo.findByProjectIdAndPath("p", "/Potato 平台")).thenReturn(Optional.of(existingRoot));
+        when(repo.findByProjectIdAndPath("p", "/Potato 平台/需求域")).thenReturn(Optional.empty());
+        when(repo.save(any())).thenAnswer(i -> {
+            ArchNode a = i.getArgument(0);
+            if (a.getId() == null) a.setId("gen" + a.getPath());
+            return a;
+        });
+        ArchNodeDtos.TreeNode child = new ArchNodeDtos.TreeNode("需求域", null, "domain", null, null, null, null, null);
+        ArchNodeDtos.TreeNode root = new ArchNodeDtos.TreeNode("Potato 平台", null, "system", null, null, null, null, List.of(child));
+        var res = service.upsertTree("p", null, List.of(root));
+        assertThat(res.get("created")).isEqualTo(1); // 仅子节点新建
+        assertThat(res.get("updated")).isEqualTo(1); // 根更新
+        assertThat(existingRoot.getStatus()).isEqualTo("active");
+        assertThat(existingRoot.getSource()).isEqualTo("manual"); // 保留原 source
     }
 }
