@@ -58,8 +58,11 @@ public class WikiController {
     }
 
     @GetMapping("/search")
-    public List<WikiPage> search(@AuthenticationPrincipal User user, @RequestParam(required = false) String q) {
+    public List<WikiPage> search(@AuthenticationPrincipal User user,
+                                 @RequestParam(required = false) String q,
+                                 @RequestParam(name = "match_mode", required = false) String matchMode,
+                                 @RequestParam(name = "include_tmp", required = false, defaultValue = "false") boolean includeTmp) {
         permissionService.check(user, "wiki", "read");
-        return service.search(q);
+        return service.search(q, MatchMode.fromValue(matchMode), includeTmp);
     }
 }

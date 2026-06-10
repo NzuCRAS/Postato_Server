@@ -32,15 +32,23 @@ export function registerTools(server: McpServer, apiKey: string | undefined): vo
 
   server.tool(
     'search_knowledge',
-    '在知识库中按关键词搜索文档(代码规范、环境配置、最佳实践等),返回最相关的若干文档片段与路径。',
+    '在知识库中检索文档。match_mode 选匹配方式:fuzzy(默认,分词跨标题/内容/标签)/exact(整串连续匹配)/tag(仅标签)/content(仅内容)/title(仅标题)/vector(向量检索,暂未实现)。默认排除临时(tmp)技术方案,include_tmp=true 可纳入。',
     {
       query: z.string().describe('搜索关键词'),
+      match_mode: z
+        .enum(['fuzzy', 'exact', 'tag', 'content', 'title', 'vector'])
+        .optional()
+        .describe('匹配模式,默认 fuzzy'),
+      include_tmp: z.boolean().optional().describe('是否纳入 tmp 临时页,默认 false'),
       limit: z.number().optional().describe('返回条数,默认 3'),
     },
-    async ({ query, limit }) => {
+    async ({ query, match_mode, include_tmp, limit }) => {
       try {
+        const qs = new URLSearchParams({ q: query })
+        if (match_mode) qs.set('match_mode', match_mode)
+        if (include_tmp) qs.set('include_tmp', 'true')
         const results = await backendRequest<Array<Record<string, any>>>(
-          `/wiki/search?q=${encodeURIComponent(query)}`,
+          `/wiki/search?${qs.toString()}`,
           apiKey,
         )
         const top = (results ?? []).slice(0, limit ?? 3).map((p) => ({

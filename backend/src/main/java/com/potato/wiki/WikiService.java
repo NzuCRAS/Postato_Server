@@ -1,15 +1,12 @@
 package com.potato.wiki;
 
-import org.springframework.data.mongodb.core.MongoTemplate;
-import org.springframework.data.mongodb.core.query.Criteria;
-import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
-import java.util.regex.Pattern;
 
 @Service
 public class WikiService {
@@ -17,11 +14,9 @@ public class WikiService {
     private static final String DEFAULT_PROJECT = "default";
 
     private final WikiPageRepository repository;
-    private final MongoTemplate mongoTemplate;
 
-    public WikiService(WikiPageRepository repository, MongoTemplate mongoTemplate) {
+    public WikiService(WikiPageRepository repository) {
         this.repository = repository;
-        this.mongoTemplate = mongoTemplate;
     }
 
     public List<WikiPage> list() {
@@ -79,17 +74,44 @@ public class WikiService {
                 .orElseGet(() -> create(title, path, parentPath, content, tags, userId));
     }
 
-    /** 文本搜索:title/content/tags 包含关键词(regex,大小写不敏感,中文可用) */
-    public List<WikiPage> search(String q) {
-        if (q == null || q.isBlank()) {
-            return list();
+    /**
+     * 多模式检索。VECTOR 预留未实现(报 501)。默认排除 tmp 标签页(临时方案不污染知识结果)。
+     * 数据量小,在 Java 内分词过滤;量大后可换 mongo 文本索引 / 向量库。
+     */
+    public List<WikiPage> search(String q, MatchMode mode, boolean includeTmp) {
+        MatchMode m = mode != null ? mode : MatchMode.FUZZY;
+        if (m == MatchMode.VECTOR) {
+            throw new ResponseStatusException(HttpStatus.NOT_IMPLEMENTED, "向量检索尚未实现(RAG 预留)");
         }
-        String regex = ".*" + Pattern.quote(q) + ".*";
-        Criteria criteria = new Criteria().orOperator(
-                Criteria.where("title").regex(regex, "i"),
-                Criteria.where("content").regex(regex, "i"),
-                Criteria.where("tags").regex(regex, "i")
-        );
-        return mongoTemplate.find(Query.query(criteria), WikiPage.class);
+        String query = q == null ? "" : q.trim().toLowerCase();
+        List<WikiPage> result = new ArrayList<>();
+        for (WikiPage p : repository.findAllByOrderByPathAsc()) {
+            if (!includeTmp && p.getTags() != null && p.getTags().contains("tmp")) continue;
+            if (query.isEmpty() || matches(p, query, m)) result.add(p);
+        }
+        return result;
+    }
+
+    private boolean matches(WikiPage p, String query, MatchMode m) {
+        String hay = haystack(p, m);
+        if (m == MatchMode.EXACT) {
+            return hay.contains(query);
+        }
+        for (String term : query.split("\\s+")) {
+            if (!term.isEmpty() && !hay.contains(term)) return false;
+        }
+        return true;
+    }
+
+    /** 按模式拼出参与匹配的小写文本(EXACT 用全字段)。 */
+    private String haystack(WikiPage p, MatchMode m) {
+        boolean useTitle = m == MatchMode.FUZZY || m == MatchMode.EXACT || m == MatchMode.TITLE;
+        boolean useContent = m == MatchMode.FUZZY || m == MatchMode.EXACT || m == MatchMode.CONTENT;
+        boolean useTags = m == MatchMode.FUZZY || m == MatchMode.EXACT || m == MatchMode.TAG;
+        StringBuilder sb = new StringBuilder();
+        if (useTitle && p.getTitle() != null) sb.append(p.getTitle()).append('\n');
+        if (useContent && p.getContent() != null) sb.append(p.getContent()).append('\n');
+        if (useTags && p.getTags() != null) sb.append(String.join(" ", p.getTags())).append('\n');
+        return sb.toString().toLowerCase();
     }
 }
