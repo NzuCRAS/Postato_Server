@@ -363,6 +363,43 @@ export function registerTools(server: McpServer, apiKey: string | undefined): vo
       }
     },
   )
+
+  server.tool(
+    'upsert_architecture',
+    '写入/更新项目结构树的一棵子树(管理树 L0–L2 或任意层):递归 upsert,parent_path 为空挂到根,layer 显式优先否则按父层自动 +1(根=L0),按 path 幂等(可重复推送)。source=manual。与 sync_project_modules(L3+ 工程树、按 repo reconcile、消失归档)互补——本工具用于人/AI 维护业务域骨架(系统/领域/上下文/模块)。',
+    {
+      project_id: z.string().describe('项目 ID,如 default'),
+      parent_path: z
+        .string()
+        .optional()
+        .describe('挂载点物化路径,如 /Potato 平台/用户域;留空=挂到根(建 L0)'),
+      nodes: z
+        .array(
+          z.object({
+            title: z.string(),
+            layer: z.string().optional().describe('L0|L1|L2|L3|L4;缺省按父层 +1(根=L0)'),
+            type: z.string().optional().describe('system|domain|context|module|component...'),
+            description: z.string().optional(),
+            tags: z.array(z.string()).optional(),
+            related_docs: z.array(z.string()).optional().describe('知识库 wiki path'),
+            related_code: z.array(z.string()).optional().describe('代码 glob,如 backend/.../auth/**'),
+            children: z.array(z.any()).optional(),
+          }),
+        )
+        .describe('一棵或多棵子树(children 可继续嵌套同样结构)'),
+    },
+    async ({ project_id, parent_path, nodes }) => {
+      try {
+        const res = await backendRequest<unknown>(`/projects/${project_id}/arch/upsert-tree`, apiKey, {
+          method: 'POST',
+          body: JSON.stringify({ parent_path, nodes }),
+        })
+        return { content: [{ type: 'text' as const, text: JSON.stringify(res, null, 2) }] }
+      } catch (e) {
+        return toolError(e)
+      }
+    },
+  )
 }
 
 function summarizeArchNode(n: Record<string, any>) {

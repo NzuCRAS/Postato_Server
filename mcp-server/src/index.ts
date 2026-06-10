@@ -45,8 +45,8 @@ app.post('/mcp', async (req, res) => {
 // 已注册工具数(新增/删除工具时同步此处):get_requirement_detail / search_knowledge /
 // create_dev_plan / update_dev_plan_node / add_dev_plan_nodes / reset_dev_plan /
 // set_dev_plan_repo / write_knowledge / write_tech_proposal /
-// get_project_detail / get_architecture / sync_project_modules
-const TOOL_COUNT = 12
+// get_project_detail / get_architecture / sync_project_modules / upsert_architecture
+const TOOL_COUNT = 13
 
 app.listen(PORT, () => {
   console.log(`[potato-mcp] Streamable HTTP MCP server on http://localhost:${PORT}/mcp (tools: ${TOOL_COUNT})`)
