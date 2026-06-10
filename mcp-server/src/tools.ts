@@ -125,15 +125,19 @@ export function registerTools(server: McpServer, apiKey: string | undefined): vo
       log_message: z.string().optional().describe('本次操作摘要'),
       log_detail: z.string().optional().describe('为什么这么做(决策依据,写进中间态日志)'),
       blocked_reason: z.string().optional().describe('status=blocked 时必填'),
+      acceptance_criteria: z
+        .array(z.object({ text: z.string(), checked: z.boolean() }))
+        .optional()
+        .describe('整列表替换该节点验收点(先用 get_requirement_detail 取当前项,把已满足的 checked 改 true,再把完整列表回传)'),
     },
-    async ({ requirement_id, node_id, status, artifacts, commit, log_message, log_detail, blocked_reason }) => {
+    async ({ requirement_id, node_id, status, artifacts, commit, log_message, log_detail, blocked_reason, acceptance_criteria }) => {
       try {
         const res = await backendRequest<unknown>(
           `/requirements/${requirement_id}/dev-plan/nodes/${node_id}`,
           apiKey,
           {
             method: 'PATCH',
-            body: JSON.stringify({ status, artifacts, commit, log_message, log_detail, blocked_reason }),
+            body: JSON.stringify({ status, artifacts, commit, log_message, log_detail, blocked_reason, acceptance_criteria }),
           },
         )
         return { content: [{ type: 'text' as const, text: JSON.stringify(res, null, 2) }] }

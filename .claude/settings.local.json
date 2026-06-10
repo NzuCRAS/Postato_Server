@@ -9,7 +9,9 @@
       "Bash(bash scripts/start-server.sh --project-dir \"C:/Code/Potato Server\")",
       "Bash(docker compose *)",
       "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:8080/health)",
-      "Bash(echo \"EXIT=$?\")"
+      "Bash(echo \"EXIT=$?\")",
+      "Bash(git -c core.autocrlf=false commit -q -m 'chore: initial import — Potato 内部效能平台\\(含 Herness 进度树做深\\)' -m '第一切片灵魂闭环:三服务脚手架、JWT+API Key 双认证、需求模块、Herness 进度树、知识库 Wiki、MCP 工具。本次新增:进度树做深 —— 富节点\\(混合验收/关联文档/结构化产物/中间态工作日志\\)、GitHub commit 闭环、人对 AI 纠偏、软警告+actor 渠道推断。' -m 'Co-Authored-By: Claude Opus 4.8 \\(1M context\\) <noreply@anthropic.com>')",
+      "Bash(git remote *)"
     ]
   },
   "enabledMcpjsonServers": [
