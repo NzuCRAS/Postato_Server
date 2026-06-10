@@ -152,7 +152,15 @@ export default function NodeDetailDrawer({
           </Text>
         )}
         {node.artifacts?.tests_added != null && <Text>测试:{node.artifacts.tests_added ? '已加' : '未加'}</Text>}
-        {!node.artifacts?.branch && node.artifacts?.pr_number == null && (
+        {node.artifacts?.tech_proposal_id && (
+          <Text>
+            技术方案:{' '}
+            <Link href={`/wiki?path=${encodeURIComponent(node.artifacts.tech_proposal_id)}`} target="_blank">
+              {node.artifacts.tech_proposal_id}
+            </Link>
+          </Text>
+        )}
+        {!node.artifacts?.branch && node.artifacts?.pr_number == null && !node.artifacts?.tech_proposal_id && (
           <Text type="secondary">(无)</Text>
         )}
       </Space>

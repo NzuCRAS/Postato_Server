@@ -69,6 +69,16 @@ public class WikiService {
         return repository.save(page);
     }
 
+    /** 按 path upsert:命中则更新、否则创建。供知识沉淀 / 技术方案复用。 */
+    public WikiPage upsertByPath(String path, String title, String content, List<String> tags, String parentPath, String userId) {
+        if (path == null || path.isBlank() || title == null || title.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "标题和路径必填");
+        }
+        return repository.findByPath(path)
+                .map(existing -> update(existing.getId(), title, content, tags, parentPath, userId))
+                .orElseGet(() -> create(title, path, parentPath, content, tags, userId));
+    }
+
     /** 文本搜索:title/content/tags 包含关键词(regex,大小写不敏感,中文可用) */
     public List<WikiPage> search(String q) {
         if (q == null || q.isBlank()) {

@@ -44,6 +44,13 @@ public class WikiController {
         return service.create(req.title(), req.path(), req.parentPath(), req.content(), req.tags(), user.getId());
     }
 
+    /** 按 path upsert(知识沉淀 / 技术方案用):命中更新、否则创建。 */
+    @PostMapping("/pages/upsert")
+    public WikiPage upsert(@AuthenticationPrincipal User user, @RequestBody WikiPageRequest req) {
+        permissionService.check(user, "wiki", "edit");
+        return service.upsertByPath(req.path(), req.title(), req.content(), req.tags(), req.parentPath(), user.getId());
+    }
+
     @PutMapping("/pages/{id}")
     public WikiPage update(@AuthenticationPrincipal User user, @PathVariable String id, @RequestBody WikiPageRequest req) {
         permissionService.check(user, "wiki", "edit");

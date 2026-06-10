@@ -220,6 +220,53 @@ export function registerTools(server: McpServer, apiKey: string | undefined): vo
       }
     },
   )
+
+  server.tool(
+    'write_knowledge',
+    '把可复用经验沉淀进知识库:按 path upsert 一篇 wiki 页(命中则更新,否则新建)。选好路径(如 /vue/toast)与标签(如 toast)便于日后 search_knowledge 检索复用。',
+    {
+      path: z.string().describe('wiki 路径,如 /vue/toast'),
+      title: z.string(),
+      content: z.string().describe('Markdown 内容'),
+      tags: z.array(z.string()).optional(),
+      parent_path: z.string().optional().describe('父级路径(目录树用)'),
+    },
+    async ({ path, title, content, tags, parent_path }) => {
+      try {
+        const res = await backendRequest<unknown>(`/wiki/pages/upsert`, apiKey, {
+          method: 'POST',
+          body: JSON.stringify({ path, title, content, tags, parentPath: parent_path }),
+        })
+        return { content: [{ type: 'text' as const, text: JSON.stringify(res, null, 2) }] }
+      } catch (e) {
+        return toolError(e)
+      }
+    },
+  )
+
+  server.tool(
+    'write_tech_proposal',
+    '为某进度节点写技术方案(文档先行):建/更新一篇技术方案 wiki 页(落在 /tech-proposals 临时区,标签 tech-proposal/tmp)并关联到节点(node.artifacts.tech_proposal_id);mark_in_progress 时把节点置 in_progress。',
+    {
+      requirement_id: z.string().describe('需求 ID'),
+      node_id: z.string().describe('关联的进度节点 ID'),
+      title: z.string(),
+      content: z.string().describe('技术方案 Markdown(建议含:引用的知识库文档、实现方案、问题预警)'),
+      tags: z.array(z.string()).optional(),
+      mark_in_progress: z.boolean().optional().describe('true 则把节点置 in_progress'),
+    },
+    async ({ requirement_id, node_id, title, content, tags, mark_in_progress }) => {
+      try {
+        const res = await backendRequest<unknown>(`/requirements/${requirement_id}/tech-proposals`, apiKey, {
+          method: 'POST',
+          body: JSON.stringify({ node_id, title, content, tags, mark_in_progress }),
+        })
+        return { content: [{ type: 'text' as const, text: JSON.stringify(res, null, 2) }] }
+      } catch (e) {
+        return toolError(e)
+      }
+    },
+  )
 }
 
 function summarizePlan(plan: Record<string, any>) {

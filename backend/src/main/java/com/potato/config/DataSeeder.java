@@ -70,7 +70,7 @@ public class DataSeeder implements CommandLineRunner {
                 rule("requirement", "edit_structured", "product"),
                 rule("requirement", "update_status", "product"),
                 rule("wiki", "read", "development", "testing", "product"),
-                rule("wiki", "edit", "product"),
+                rule("wiki", "edit", "development", "product"),
                 rule("dev_plan", "create", "development"),
                 rule("dev_plan", "update", "development"),
                 rule("dev_plan", "comment", "development", "testing", "product")

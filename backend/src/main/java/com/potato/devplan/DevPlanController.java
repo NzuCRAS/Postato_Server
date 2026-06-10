@@ -1,5 +1,6 @@
 package com.potato.devplan;
 
+import com.potato.auth.AuthChannel;
 import com.potato.devplan.DevPlanDtos.AddCorrectionRequest;
 import com.potato.devplan.DevPlanDtos.CreateDevPlanRequest;
 import com.potato.devplan.DevPlanDtos.UpdateNodeRequest;
@@ -8,7 +9,6 @@ import com.potato.devplan.DevPlanDtos.UpdateResult;
 import com.potato.permission.PermissionService;
 import com.potato.user.User;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
@@ -39,7 +39,7 @@ public class DevPlanController {
                                          @PathVariable String nodeId,
                                          @RequestBody UpdateNodeRequest req) {
         permissionService.check(user, "dev_plan", "update");
-        UpdateResult r = service.updateNode(reqId, nodeId, req, actorOf(authentication));
+        UpdateResult r = service.updateNode(reqId, nodeId, req, AuthChannel.actorOf(authentication));
         return new UpdateNodeResponse(r.node(), r.warnings());
     }
 
@@ -90,15 +90,5 @@ public class DevPlanController {
                                @RequestBody DevPlan.Repo repo) {
         permissionService.check(user, "dev_plan", "update");
         return service.setRepo(reqId, repo);
-    }
-
-    /** API Key 渠道 → ai;JWT 渠道 → human(authority 由 AuthTokenFilter 注入) */
-    private String actorOf(Authentication authentication) {
-        if (authentication != null) {
-            for (GrantedAuthority a : authentication.getAuthorities()) {
-                if ("CHANNEL_APIKEY".equals(a.getAuthority())) return "ai";
-            }
-        }
-        return "human";
     }
 }
