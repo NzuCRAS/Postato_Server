@@ -1,0 +1,64 @@
+services:
+  mongo:
+    image: mongo:7
+    container_name: potato-mongo
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo-data:/data/db
+    restart: unless-stopped
+
+  backend:
+    image: maven:3.9-eclipse-temurin-17
+    container_name: potato-backend
+    working_dir: /app
+    command: sh -c "mvn -q spring-boot:run"
+    environment:
+      - MONGODB_URI=mongodb://mongo:27017/potato
+    volumes:
+      - ./backend:/app
+      - maven-cache:/root/.m2
+    ports:
+      - "8080:8080"
+    depends_on:
+      - mongo
+    restart: unless-stopped
+
+  frontend:
+    image: node:20
+    container_name: potato-frontend
+    working_dir: /app
+    command: sh -c "npm install && npm run dev"
+    environment:
+      - BACKEND_PROXY=http://backend:8080
+    volumes:
+      - ./frontend:/app
+      - frontend-node-modules:/app/node_modules
+    ports:
+      - "5173:5173"
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+  mcp-server:
+    image: node:20
+    container_name: potato-mcp
+    working_dir: /app
+    command: sh -c "npm install && npm run dev"
+    environment:
+      - MCP_PORT=3001
+      - BACKEND_URL=http://backend:8080/api/v1
+    volumes:
+      - ./mcp-server:/app
+      - mcp-node-modules:/app/node_modules
+    ports:
+      - "3001:3001"
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+volumes:
+  mongo-data:
+  maven-cache:
+  frontend-node-modules:
+  mcp-node-modules:

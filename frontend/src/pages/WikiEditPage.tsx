@@ -1,0 +1,108 @@
+// 视图层:知识库文档独立编辑页(整页 编辑/分屏/预览)
+import { useState } from 'react'
+import { Button, Input, Segmented, Select, Space, Spin, message } from 'antd'
+import { useNavigate, useParams } from 'react-router-dom'
+import { useWikiEditor } from '../features/useWikiEditor'
+import MarkdownView from '../components/MarkdownView'
+import type { WikiInput } from '../api/wiki'
+
+const { TextArea } = Input
+
+type ViewMode = '编辑' | '分屏' | '预览'
+
+export default function WikiEditPage() {
+  const { id } = useParams()
+  const navigate = useNavigate()
+  const { form, setForm, loading, saving, save } = useWikiEditor(id)
+  const [view, setView] = useState<ViewMode>('分屏')
+
+  if (loading || !form) return <Spin style={{ display: 'block', marginTop: 80 }} />
+
+  const set = (patch: Partial<WikiInput>) => setForm({ ...form, ...patch })
+
+  const onSave = async () => {
+    if (!form.title.trim() || !form.path.trim()) {
+      message.error('标题和路径必填')
+      return
+    }
+    try {
+      await save()
+      message.success('已保存')
+      navigate('/wiki')
+    } catch (e) {
+      message.error(e instanceof Error ? e.message : '保存失败')
+    }
+  }
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 112px)' }}>
+      <Space direction="vertical" style={{ width: '100%' }} size="small">
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          <Input
+            size="large"
+            placeholder="标题"
+            value={form.title}
+            onChange={(e) => set({ title: e.target.value })}
+            style={{ flex: 1 }}
+          />
+          <Segmented<ViewMode>
+            options={['编辑', '分屏', '预览']}
+            value={view}
+            onChange={setView}
+          />
+          <Button onClick={() => navigate('/wiki')}>取消</Button>
+          <Button type="primary" loading={saving} onClick={onSave}>保存</Button>
+        </div>
+        <Space wrap>
+          <Input
+            placeholder="路径,如 /dev/react-style"
+            value={form.path}
+            onChange={(e) => set({ path: e.target.value })}
+            disabled={!!id}
+            style={{ width: 300 }}
+          />
+          <Input
+            placeholder="父路径(可空)"
+            value={form.parentPath}
+            onChange={(e) => set({ parentPath: e.target.value })}
+            style={{ width: 300 }}
+          />
+          <Select
+            mode="tags"
+            placeholder="标签(回车添加)"
+            value={form.tags}
+            onChange={(tags: string[]) => set({ tags })}
+            tokenSeparators={[',', '，']}
+            style={{ minWidth: 260 }}
+          />
+        </Space>
+      </Space>
+
+      <div style={{ display: 'flex', gap: 12, flex: 1, marginTop: 12, minHeight: 0 }}>
+        {view !== '预览' && (
+          <TextArea
+            value={form.content}
+            onChange={(e) => set({ content: e.target.value })}
+            placeholder="Markdown 源文本"
+            style={{ flex: 1, height: '100%', resize: 'none', fontFamily: 'monospace' }}
+          />
+        )}
+        {view !== '编辑' && (
+          <div
+            style={{
+              flex: 1,
+              height: '100%',
+              overflow: 'auto',
+              border: '1px solid #f0f0f0',
+              borderRadius: 8,
+              padding: '12px 20px',
+              background: '#fff',
+            }}
+          >
+            <MarkdownView content={form.content ?? ''} />
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}

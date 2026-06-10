@@ -1,0 +1,16 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: potato-backend
+  data:
+    mongodb:
+      uri: ${MONGODB_URI:mongodb://localhost:27017/potato}
+
+app:
+  jwt:
+    secret: ${JWT_SECRET:potato-dev-secret-change-me-please-0123456789abcdef}
+    expiration-seconds: 86400
+  seed:
+    admin-password: ${SEED_ADMIN_PASSWORD:admin123}

@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "allow": [
+      "WebFetch(domain:docs.claude.com)",
+      "mcp__potato__search_knowledge",
+      "mcp__potato__get_requirement_detail",
+      "mcp__potato__create_dev_plan",
+      "mcp__potato__update_dev_plan_node",
+      "Bash(bash scripts/start-server.sh --project-dir \"C:/Code/Potato Server\")",
+      "Bash(docker compose *)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:8080/health)",
+      "Bash(echo \"EXIT=$?\")"
+    ]
+  },
+  "enabledMcpjsonServers": [
+    "potato"
+  ]
+}
