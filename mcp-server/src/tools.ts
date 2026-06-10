@@ -20,6 +20,8 @@ export function registerTools(server: McpServer, apiKey: string | undefined): vo
           id: r.id,
           title: r.title,
           status: r.status,
+          project_id: r.projectId,
+          doc_links: r.docLinks,
           structured: r.structured,
           dev_plan: r.devPlan ? summarizePlan(r.devPlan) : null,
         }
@@ -275,6 +277,105 @@ export function registerTools(server: McpServer, apiKey: string | undefined): vo
       }
     },
   )
+
+  server.tool(
+    'get_project_detail',
+    '获取项目详情:代码仓库、关联文档(设计/规范/效果参考)、业务域结构树(精简 L0-L4)、项目下需求摘要。开发前先读以理解项目结构与规范。',
+    { project_id: z.string().describe('项目 ID,如 default') },
+    async ({ project_id }) => {
+      try {
+        const project = await backendRequest<Record<string, any>>(`/projects/${project_id}`, apiKey)
+        const arch = await backendRequest<Array<Record<string, any>>>(`/projects/${project_id}/arch`, apiKey)
+        const reqs = await backendRequest<Array<Record<string, any>>>(
+          `/requirements?projectId=${encodeURIComponent(project_id)}`,
+          apiKey,
+        )
+        const summary = {
+          id: project.id,
+          name: project.name,
+          descriptionMd: project.descriptionMd,
+          repos: project.repos,
+          doc_links: project.docLinks,
+          architecture: (arch ?? []).map(summarizeArchNode),
+          requirements: (reqs ?? []).map((r) => ({ id: r.id, title: r.title, status: r.status })),
+        }
+        return { content: [{ type: 'text' as const, text: JSON.stringify(summary, null, 2) }] }
+      } catch (e) {
+        return toolError(e)
+      }
+    },
+  )
+
+  server.tool(
+    'get_architecture',
+    '获取项目结构树(业务域 L0-L4)。可按 tag/layer 过滤;过滤时返回命中节点 + 其祖先链(跨切面动态树)。',
+    {
+      project_id: z.string().describe('项目 ID'),
+      tag: z.string().optional().describe('按标签过滤,如 安全'),
+      layer: z.string().optional().describe('按层过滤:L0|L1|L2|L3|L4'),
+    },
+    async ({ project_id, tag, layer }) => {
+      try {
+        const qs = new URLSearchParams()
+        if (tag) qs.set('tag', tag)
+        if (layer) qs.set('layer', layer)
+        const arch = await backendRequest<Array<Record<string, any>>>(
+          `/projects/${project_id}/arch?${qs.toString()}`,
+          apiKey,
+        )
+        return {
+          content: [{ type: 'text' as const, text: JSON.stringify({ nodes: (arch ?? []).map(summarizeArchNode) }, null, 2) }],
+        }
+      } catch (e) {
+        return toolError(e)
+      }
+    },
+  )
+
+  server.tool(
+    'sync_project_modules',
+    '把仓库 .project.yaml 解析出的模块声明推给平台,幂等 reconcile 结构树 L3+ 工程树(消失的归档,不覆盖手动节点)。node 须为完整物化路径(含 L0 根)。',
+    {
+      project_id: z.string().describe('项目 ID'),
+      repo_id: z.string().describe('项目内仓库 id,如 repo_default'),
+      modules: z
+        .array(
+          z.object({
+            node: z.string().describe('归属管理节点的完整物化路径,如 /Potato 平台/用户域/认证上下文'),
+            title: z.string(),
+            type: z.string().optional(),
+            tags: z.array(z.string()).optional(),
+            related_docs: z.array(z.string()).optional(),
+            related_code: z.array(z.string()).optional(),
+          }),
+        )
+        .describe('一个仓库声明的模块列表'),
+    },
+    async ({ project_id, repo_id, modules }) => {
+      try {
+        const res = await backendRequest<unknown>(`/projects/${project_id}/arch/sync`, apiKey, {
+          method: 'POST',
+          body: JSON.stringify({ repo_id, modules }),
+        })
+        return { content: [{ type: 'text' as const, text: JSON.stringify(res, null, 2) }] }
+      } catch (e) {
+        return toolError(e)
+      }
+    },
+  )
+}
+
+function summarizeArchNode(n: Record<string, any>) {
+  return {
+    path: n.path,
+    layer: n.layer,
+    type: n.type,
+    title: n.title,
+    tags: n.tags,
+    related_docs: n.related_docs,
+    related_code: n.related_code,
+    source: n.source,
+  }
 }
 
 function summarizePlan(plan: Record<string, any>) {
