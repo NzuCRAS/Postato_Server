@@ -20,6 +20,13 @@ public class DevPlan {
     @JsonProperty("updated_at")
     private Instant updatedAt;
 
+    /** 非空表示这棵树已被「重置」入档(保留全部日志,供日后排查) */
+    @JsonProperty("archived_at")
+    private Instant archivedAt;
+
+    @JsonProperty("archive_reason")
+    private String archiveReason;
+
     /** 计划顶层记录的代码仓库(GitHub 闭环) */
     private Repo repo;
 

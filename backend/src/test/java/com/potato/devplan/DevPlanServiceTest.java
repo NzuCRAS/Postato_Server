@@ -100,4 +100,29 @@ class DevPlanServiceTest {
         DevPlan.Correction resolved = service.resolveCorrection("r1", "node_1", c.getId());
         assertThat(resolved.isResolved()).isTrue();
     }
+
+    @Test
+    void add_nodes_continues_id_numbering_under_parent() {
+        reqWithPlan(); // root + node_1
+        DevPlan.Node parent = service.addNodes("r1", "node_1", List.of(
+                new NodeInput("子任务A", null, null, null, null, null),
+                new NodeInput("子任务B", null, null, null, null, null)));
+        assertThat(parent.getChildren()).hasSize(2);
+        assertThat(parent.getChildren().get(0).getId()).isEqualTo("node_2");
+        assertThat(parent.getChildren().get(1).getId()).isEqualTo("node_3");
+        assertThat(parent.getChildren().get(0).getStatus()).isEqualTo("todo");
+    }
+
+    @Test
+    void reset_archives_plan_without_losing_logs() {
+        Requirement req = reqWithPlan();
+        service.resetPlan("r1", "推倒重来");
+        assertThat(req.getDevPlan()).isNull();
+        assertThat(req.getArchivedDevPlans()).hasSize(1);
+        DevPlan archived = req.getArchivedDevPlans().get(0);
+        assertThat(archived.getArchivedAt()).isNotNull();
+        assertThat(archived.getArchiveReason()).isEqualTo("推倒重来");
+        // 日志仍在(根节点的"初始分解"日志没丢)
+        assertThat(archived.getRoot().getLog()).isNotEmpty();
+    }
 }

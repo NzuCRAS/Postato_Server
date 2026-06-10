@@ -146,6 +146,58 @@ export function registerTools(server: McpServer, apiKey: string | undefined): vo
       }
     },
   )
+  server.tool(
+    'add_dev_plan_nodes',
+    '在已有进度树的某个父节点下追加子节点(把一个节点拆成更细的子任务)。后端自动续号、置 todo。需要先有计划。',
+    {
+      requirement_id: z.string().describe('需求 ID'),
+      parent_node_id: z.string().describe('父节点 ID(子节点挂到它下面),如 node_1'),
+      nodes: z
+        .array(
+          z.object({
+            title: z.string(),
+            description: z.string().optional(),
+            module_ref: z.string().optional(),
+            acceptance_criteria: z.array(z.string()).optional(),
+            related_docs: z.array(z.string()).optional(),
+            children: z.array(z.any()).optional(),
+          }),
+        )
+        .describe('要追加的子节点(children 可继续嵌套)'),
+    },
+    async ({ requirement_id, parent_node_id, nodes }) => {
+      try {
+        const res = await backendRequest<unknown>(
+          `/requirements/${requirement_id}/dev-plan/nodes/${parent_node_id}/children`,
+          apiKey,
+          { method: 'POST', body: JSON.stringify({ nodes }) },
+        )
+        return { content: [{ type: 'text' as const, text: JSON.stringify(res, null, 2) }] }
+      } catch (e) {
+        return toolError(e)
+      }
+    },
+  )
+
+  server.tool(
+    'reset_dev_plan',
+    '重置开发计划:把当前树标记为「已重置」并入档(不删除、保留全部日志,供日后 AI/人排查),清空后可重新 create_dev_plan。慎用。',
+    {
+      requirement_id: z.string().describe('需求 ID'),
+      reason: z.string().optional().describe('重置原因(入档记录,便于日后排查)'),
+    },
+    async ({ requirement_id, reason }) => {
+      try {
+        const res = await backendRequest<unknown>(`/requirements/${requirement_id}/dev-plan/reset`, apiKey, {
+          method: 'POST',
+          body: JSON.stringify({ reason }),
+        })
+        return { content: [{ type: 'text' as const, text: JSON.stringify(res, null, 2) }] }
+      } catch (e) {
+        return toolError(e)
+      }
+    },
+  )
 }
 
 function summarizePlan(plan: Record<string, any>) {

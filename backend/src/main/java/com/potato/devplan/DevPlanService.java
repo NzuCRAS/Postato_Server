@@ -145,6 +145,49 @@ public class DevPlanService {
         return c;
     }
 
+    /** 在父节点下追加子节点(自动续号、置 todo)。用于把一个节点拆成更细的子任务。 */
+    public DevPlan.Node addNodes(String reqId, String parentId, List<NodeInput> nodes) {
+        Requirement req = getReq(reqId);
+        DevPlan.Node parent = requireNode(req, parentId);
+        Counter counter = new Counter(maxNodeNumber(req.getDevPlan().getRoot()));
+        List<DevPlan.Node> added = buildNodes(nodes, counter);
+        parent.getChildren().addAll(added);
+        touch(req);
+        return parent;
+    }
+
+    /** 重置开发计划:当前树标记 archived 并入档(不删除、保留全部日志),清空 devPlan 以便重新建树。 */
+    public void resetPlan(String reqId, String reason) {
+        Requirement req = getReq(reqId);
+        DevPlan plan = req.getDevPlan();
+        if (plan == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "没有可重置的开发计划");
+        }
+        plan.setArchivedAt(Instant.now());
+        plan.setArchiveReason(reason);
+        req.getArchivedDevPlans().add(plan);
+        req.setDevPlan(null);
+        req.setUpdatedAt(Instant.now());
+        requirementRepository.save(req);
+    }
+
+    /** 扫描树中形如 node_N 的最大编号(node_root 等非数字后缀计 0)。 */
+    private int maxNodeNumber(DevPlan.Node node) {
+        if (node == null) return 0;
+        int max = 0;
+        if (node.getId() != null && node.getId().startsWith("node_")) {
+            try {
+                max = Integer.parseInt(node.getId().substring("node_".length()));
+            } catch (NumberFormatException ignored) {
+                // node_root 之类,忽略
+            }
+        }
+        for (DevPlan.Node c : node.getChildren()) {
+            max = Math.max(max, maxNodeNumber(c));
+        }
+        return max;
+    }
+
     // ---- 软警告 ----
 
     /** done 时计算软警告(不阻止操作) */
@@ -262,7 +305,9 @@ public class DevPlanService {
     }
 
     private static class Counter {
-        private int n = 0;
+        private int n;
+        Counter() { this.n = 0; }
+        Counter(int start) { this.n = start; }
         int next() { return ++n; }
     }
 }

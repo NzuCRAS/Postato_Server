@@ -63,6 +63,26 @@ public class DevPlanController {
         return service.resolveCorrection(reqId, nodeId, correctionId);
     }
 
+    /** 在父节点下追加子节点:development */
+    @PostMapping("/nodes/{parentId}/children")
+    public DevPlan.Node addNodes(@AuthenticationPrincipal User user,
+                                 @PathVariable String reqId,
+                                 @PathVariable String parentId,
+                                 @RequestBody DevPlanDtos.AddNodesRequest req) {
+        permissionService.check(user, "dev_plan", "update");
+        return service.addNodes(reqId, parentId, req.nodes());
+    }
+
+    /** 重置(入档)当前开发计划:development。之后可重新 create。 */
+    @PostMapping("/reset")
+    public java.util.Map<String, Object> reset(@AuthenticationPrincipal User user,
+                                               @PathVariable String reqId,
+                                               @RequestBody(required = false) DevPlanDtos.ResetRequest req) {
+        permissionService.check(user, "dev_plan", "update");
+        service.resetPlan(reqId, req != null ? req.reason() : null);
+        return java.util.Map.of("status", "reset");
+    }
+
     /** API Key 渠道 → ai;JWT 渠道 → human(authority 由 AuthTokenFilter 注入) */
     private String actorOf(Authentication authentication) {
         if (authentication != null) {

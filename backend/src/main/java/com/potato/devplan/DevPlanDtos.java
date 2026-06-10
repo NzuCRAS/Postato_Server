@@ -50,6 +50,14 @@ public final class DevPlanDtos {
     public record AddCorrectionRequest(String message) {
     }
 
+    /** 在父节点下追加子节点请求 */
+    public record AddNodesRequest(List<NodeInput> nodes) {
+    }
+
+    /** 重置(入档)请求 */
+    public record ResetRequest(String reason) {
+    }
+
     /** 兜底:更新节点时 artifacts 也可接受松散 Map(预留,本轮前端用强类型) */
     public record LooseArtifacts(Map<String, Object> fields) {
     }

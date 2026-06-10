@@ -27,6 +27,9 @@ public class Requirement {
 
     private com.potato.devplan.DevPlan devPlan;
 
+    /** 已重置入档的历史进度树(不删除,保留日志供日后排查) */
+    private java.util.List<com.potato.devplan.DevPlan> archivedDevPlans = new java.util.ArrayList<>();
+
     private String createdBy;
     private Instant createdAt;
     private Instant updatedAt;
