@@ -18,7 +18,8 @@
       "mcp__potato__write_knowledge",
       "Bash(git -c core.autocrlf=false add -A)",
       "Bash(git -c core.autocrlf=false commit -q -m 'feat\\(frontend\\): 阶段5 — 项目层完整 UI\\(ProjectContext+选择器+项目列表/详情+结构树+需求作用域\\)' -m 'ProjectContext\\(当前项目/切换/localStorage\\)、顶栏项目选择器+项目菜单;ProjectsPage 列表/新建;ProjectDetailPage Tabs\\(概览/仓库/结构树/文档/需求\\);ArchitectureTree\\(L0-L4 树+节点详情+新建/归档+标签跨切面过滤\\);需求列表/创建按当前项目作用域。前端 tsc 通过。' -m 'Co-Authored-By: Claude Opus 4.8 \\(1M context\\) <noreply@anthropic.com>')",
-      "Bash(git push *)"
+      "Bash(git push *)",
+      "Bash(git -c core.autocrlf=false commit -q -m 'docs\\(project\\): 阶段6 — 同步开发说明书\\(MCP 12 工具+项目层\\)+ 落 spec 2026-06-10-project-layer-design' -m 'Co-Authored-By: Claude Opus 4.8 \\(1M context\\) <noreply@anthropic.com>')"
     ]
   },
   "enabledMcpjsonServers": [
