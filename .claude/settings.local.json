@@ -19,7 +19,8 @@
       "Bash(git -c core.autocrlf=false add -A)",
       "Bash(git -c core.autocrlf=false commit -q -m 'feat\\(frontend\\): 阶段5 — 项目层完整 UI\\(ProjectContext+选择器+项目列表/详情+结构树+需求作用域\\)' -m 'ProjectContext\\(当前项目/切换/localStorage\\)、顶栏项目选择器+项目菜单;ProjectsPage 列表/新建;ProjectDetailPage Tabs\\(概览/仓库/结构树/文档/需求\\);ArchitectureTree\\(L0-L4 树+节点详情+新建/归档+标签跨切面过滤\\);需求列表/创建按当前项目作用域。前端 tsc 通过。' -m 'Co-Authored-By: Claude Opus 4.8 \\(1M context\\) <noreply@anthropic.com>')",
       "Bash(git push *)",
-      "Bash(git -c core.autocrlf=false commit -q -m 'docs\\(project\\): 阶段6 — 同步开发说明书\\(MCP 12 工具+项目层\\)+ 落 spec 2026-06-10-project-layer-design' -m 'Co-Authored-By: Claude Opus 4.8 \\(1M context\\) <noreply@anthropic.com>')"
+      "Bash(git -c core.autocrlf=false commit -q -m 'docs\\(project\\): 阶段6 — 同步开发说明书\\(MCP 12 工具+项目层\\)+ 落 spec 2026-06-10-project-layer-design' -m 'Co-Authored-By: Claude Opus 4.8 \\(1M context\\) <noreply@anthropic.com>')",
+      "Bash(git -c core.autocrlf=false commit -q -m 'feat\\(frontend\\): 结构树改为可视化层级树\\(配色卡片+连接线\\),替代缩进列表' -m 'ArchitectureTree 用自定义递归 Branch 渲染:节点为按 L0-L4 配色的卡片\\(左边框+层级徽标\\),父子用竖向引导线+横向肘形连接线;卡片上「＋」快速加子节点,点卡片开详情抽屉。保留标签跨切面过滤/归档/sync 只读。' -m 'Co-Authored-By: Claude Opus 4.8 \\(1M context\\) <noreply@anthropic.com>')"
     ]
   },
   "enabledMcpjsonServers": [

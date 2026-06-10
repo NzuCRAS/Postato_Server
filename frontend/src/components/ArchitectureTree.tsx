@@ -1,40 +1,130 @@
-// 视图层:项目结构树(L0-L4 业务域)。树渲染 + 节点详情 + 新建/归档 + 标签跨切面过滤。
+// 视图层:项目结构树(L0-L4 业务域)。可视化层级树(配色卡片 + 连接线)+ 节点详情 + 新建/归档 + 标签跨切面过滤。
 import { useEffect, useState } from 'react'
-import { Button, Card, Drawer, Empty, Form, Input, Select, Space, Tag, Tree, Typography, message } from 'antd'
-import type { DataNode } from 'antd/es/tree'
+import { Button, Card, Drawer, Empty, Form, Input, Select, Space, Tag, Typography, message } from 'antd'
 import { archiveArchNode, createArchNode, listArch } from '../api/archNode'
 import type { ArchNode } from '../types'
 
 const { Text, Link, Paragraph } = Typography
 const LAYERS = ['L0', 'L1', 'L2', 'L3', 'L4']
 
-function nodeTitle(n: ArchNode) {
-  return (
-    <Space size={4} wrap>
-      {n.layer && <Tag color="purple">{n.layer}</Tag>}
-      <Text strong>{n.title}</Text>
-      {n.type && <Text type="secondary">{n.type}</Text>}
-      {n.source === 'sync' && <Tag color="geekblue">sync</Tag>}
-      {(n.tags ?? []).map((t) => <Tag key={t}>{t}</Tag>)}
-    </Space>
-  )
+// 各层配色(卡片左边框 + 层级徽标)
+const LAYER_COLOR: Record<string, string> = {
+  L0: '#531dab',
+  L1: '#1677ff',
+  L2: '#13c2c2',
+  L3: '#52c41a',
+  L4: '#8c8c8c',
 }
+const layerColor = (l?: string) => LAYER_COLOR[l ?? ''] ?? '#8c8c8c'
 
-function buildTree(nodes: ArchNode[]): DataNode[] {
+type ChildrenMap = Record<string, ArchNode[]>
+
+function buildChildrenMap(nodes: ArchNode[]): { roots: ArchNode[]; childrenMap: ChildrenMap } {
   const byId: Record<string, ArchNode> = {}
-  const children: Record<string, ArchNode[]> = {}
+  const childrenMap: ChildrenMap = {}
   const roots: ArchNode[] = []
   nodes.forEach((n) => (byId[n.id] = n))
   nodes.forEach((n) => {
-    if (n.parentId && byId[n.parentId]) (children[n.parentId] ??= []).push(n)
+    if (n.parentId && byId[n.parentId]) (childrenMap[n.parentId] ??= []).push(n)
     else roots.push(n)
   })
-  const toData = (n: ArchNode): DataNode => ({
-    key: n.id,
-    title: nodeTitle(n),
-    children: (children[n.id] ?? []).map(toData),
-  })
-  return roots.map(toData)
+  return { roots, childrenMap }
+}
+
+function NodeCard({
+  node,
+  selected,
+  onOpen,
+  onAddChild,
+}: {
+  node: ArchNode
+  selected: boolean
+  onOpen: () => void
+  onAddChild: () => void
+}) {
+  const color = layerColor(node.layer)
+  return (
+    <div
+      onClick={onOpen}
+      style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: 8,
+        padding: '6px 12px',
+        background: selected ? '#e6f4ff' : '#fff',
+        border: `1px solid ${selected ? '#1677ff' : '#e8e8e8'}`,
+        borderLeft: `4px solid ${color}`,
+        borderRadius: 8,
+        boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
+        cursor: 'pointer',
+        maxWidth: 520,
+      }}
+    >
+      {node.layer && (
+        <span style={{ background: color, color: '#fff', borderRadius: 4, fontSize: 11, padding: '1px 6px', fontWeight: 600 }}>
+          {node.layer}
+        </span>
+      )}
+      <Text strong>{node.title}</Text>
+      {node.type && <Text type="secondary" style={{ fontSize: 12 }}>{node.type}</Text>}
+      {node.source === 'sync' && <Tag color="geekblue" style={{ marginInlineEnd: 0 }}>sync</Tag>}
+      {(node.tags ?? []).slice(0, 4).map((t) => (
+        <Tag key={t} style={{ marginInlineEnd: 0 }}>{t}</Tag>
+      ))}
+      <Button
+        type="text"
+        size="small"
+        onClick={(e) => {
+          e.stopPropagation()
+          onAddChild()
+        }}
+        style={{ marginLeft: 4 }}
+      >
+        ＋
+      </Button>
+    </div>
+  )
+}
+
+function Branch({
+  node,
+  childrenMap,
+  selId,
+  onOpen,
+  onAddChild,
+}: {
+  node: ArchNode
+  childrenMap: ChildrenMap
+  selId: string | null
+  onOpen: (n: ArchNode) => void
+  onAddChild: (n: ArchNode) => void
+}) {
+  const kids = childrenMap[node.id] ?? []
+  return (
+    <div>
+      <NodeCard node={node} selected={selId === node.id} onOpen={() => onOpen(node)} onAddChild={() => onAddChild(node)} />
+      {kids.length > 0 && (
+        <div
+          style={{
+            marginLeft: 18,
+            paddingLeft: 18,
+            borderLeft: '2px solid #e8e8e8',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 10,
+            marginTop: 10,
+          }}
+        >
+          {kids.map((k) => (
+            <div key={k.id} style={{ display: 'flex', alignItems: 'flex-start' }}>
+              <span style={{ width: 16, height: 18, borderTop: '2px solid #e8e8e8', marginTop: 14, marginLeft: -18, flex: '0 0 auto' }} />
+              <Branch node={k} childrenMap={childrenMap} selId={selId} onOpen={onOpen} onAddChild={onAddChild} />
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
 }
 
 export default function ArchitectureTree({ pid }: { pid: string }) {
@@ -56,9 +146,6 @@ export default function ArchitectureTree({ pid }: { pid: string }) {
     void reload()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pid, tag])
-
-  const byId: Record<string, ArchNode> = {}
-  nodes.forEach((n) => (byId[n.id] = n))
 
   const openAdd = (parent: ArchNode | null) => {
     setAddParent(parent)
@@ -98,7 +185,7 @@ export default function ArchitectureTree({ pid }: { pid: string }) {
     }
   }
 
-  const treeData = buildTree(nodes)
+  const { roots, childrenMap } = buildChildrenMap(nodes)
 
   return (
     <Space direction="vertical" style={{ width: '100%' }} size="middle">
@@ -112,17 +199,22 @@ export default function ArchitectureTree({ pid }: { pid: string }) {
             onChange={(e) => { if (!e.target.value) setTag('') }}
           />
           {tag && <Tag color="processing">标签视图:{tag}(含祖先链)</Tag>}
-          <Button onClick={() => openAdd(null)}>+ 新建根节点(L0)</Button>
+          <Button onClick={() => openAdd(null)}>＋ 新建根节点(L0)</Button>
+          <Text type="secondary" style={{ fontSize: 12 }}>
+            层级:{LAYERS.map((l) => (
+              <Tag key={l} style={{ marginInlineStart: 4 }} color={layerColor(l)}>{l}</Tag>
+            ))}
+          </Text>
         </Space>
       </Card>
-      <Card size="small">
-        {treeData.length ? (
-          <Tree
-            treeData={treeData}
-            defaultExpandAll
-            selectable
-            onSelect={(keys) => keys[0] && setSel(byId[String(keys[0])] ?? null)}
-          />
+
+      <Card size="small" style={{ overflowX: 'auto' }}>
+        {roots.length ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12, padding: 4 }}>
+            {roots.map((r) => (
+              <Branch key={r.id} node={r} childrenMap={childrenMap} selId={sel?.id ?? null} onOpen={setSel} onAddChild={openAdd} />
+            ))}
+          </div>
         ) : (
           <Empty description={tag ? '该标签下无节点' : '还没有结构节点,先建一个 L0 根节点'} />
         )}
@@ -136,7 +228,7 @@ export default function ArchitectureTree({ pid }: { pid: string }) {
         extra={
           sel && (
             <Space>
-              <Button size="small" onClick={() => openAdd(sel)}>+ 子节点</Button>
+              <Button size="small" onClick={() => openAdd(sel)}>＋ 子节点</Button>
               {sel.source !== 'sync' && (
                 <Button size="small" danger onClick={() => onArchive(sel)}>归档</Button>
               )}
