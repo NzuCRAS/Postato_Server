@@ -139,4 +139,15 @@ class DevPlanServiceTest {
         assertThat(last.getSummary()).contains("勾选").contains("必填校验");
         assertThat(last.getActor()).isEqualTo("human");
     }
+
+    @Test
+    void set_repo_updates_plan_repo() {
+        reqWithPlan();
+        DevPlan.Repo repo = new DevPlan.Repo();
+        repo.setUrl("https://github.com/x/y");
+        repo.setDefaultBranch("main");
+        DevPlan.Repo out = service.setRepo("r1", repo);
+        assertThat(out.getUrl()).isEqualTo("https://github.com/x/y");
+        assertThat(out.getDefaultBranch()).isEqualTo("main");
+    }
 }

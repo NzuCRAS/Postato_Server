@@ -198,6 +198,28 @@ export function registerTools(server: McpServer, apiKey: string | undefined): vo
       }
     },
   )
+
+  server.tool(
+    'set_dev_plan_repo',
+    '设置/更新进度树关联的代码仓库(建树后也能改)。节点 commit 链接会用 repo.url + sha 拼出。',
+    {
+      requirement_id: z.string().describe('需求 ID'),
+      url: z.string().describe('仓库地址,如 https://github.com/org/repo'),
+      provider: z.string().optional().describe('如 github'),
+      default_branch: z.string().optional().describe('默认分支,如 main'),
+    },
+    async ({ requirement_id, url, provider, default_branch }) => {
+      try {
+        const res = await backendRequest<unknown>(`/requirements/${requirement_id}/dev-plan/repo`, apiKey, {
+          method: 'PATCH',
+          body: JSON.stringify({ url, provider, default_branch }),
+        })
+        return { content: [{ type: 'text' as const, text: JSON.stringify(res, null, 2) }] }
+      } catch (e) {
+        return toolError(e)
+      }
+    },
+  )
 }
 
 function summarizePlan(plan: Record<string, any>) {

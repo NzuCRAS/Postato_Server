@@ -194,6 +194,21 @@ public class DevPlanService {
         requirementRepository.save(req);
     }
 
+    /** 设置/更新进度树关联的代码仓库(建树后也能改)。 */
+    public DevPlan.Repo setRepo(String reqId, DevPlan.Repo repo) {
+        if (repo == null || repo.getUrl() == null || repo.getUrl().isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "repo.url 不能为空");
+        }
+        Requirement req = getReq(reqId);
+        DevPlan plan = req.getDevPlan();
+        if (plan == null) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "开发计划不存在");
+        }
+        plan.setRepo(repo);
+        touch(req);
+        return plan.getRepo();
+    }
+
     /** 扫描树中形如 node_N 的最大编号(node_root 等非数字后缀计 0)。 */
     private int maxNodeNumber(DevPlan.Node node) {
         if (node == null) return 0;

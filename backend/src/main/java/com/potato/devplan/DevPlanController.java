@@ -83,6 +83,15 @@ public class DevPlanController {
         return java.util.Map.of("status", "reset");
     }
 
+    /** 设置/更新进度树关联仓库:development */
+    @PatchMapping("/repo")
+    public DevPlan.Repo setRepo(@AuthenticationPrincipal User user,
+                               @PathVariable String reqId,
+                               @RequestBody DevPlan.Repo repo) {
+        permissionService.check(user, "dev_plan", "update");
+        return service.setRepo(reqId, repo);
+    }
+
     /** API Key 渠道 → ai;JWT 渠道 → human(authority 由 AuthTokenFilter 注入) */
     private String actorOf(Authentication authentication) {
         if (authentication != null) {
