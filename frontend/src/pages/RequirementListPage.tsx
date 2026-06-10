@@ -2,6 +2,7 @@
 import { Alert, Button, Space, Table, Tag, Typography } from 'antd'
 import { useNavigate } from 'react-router-dom'
 import { useRequirements } from '../features/useRequirements'
+import { useProjects } from '../features/ProjectContext'
 import { statusColor, statusLabel } from '../features/requirementStatus'
 import type { RequirementSummary } from '../types'
 
@@ -9,7 +10,8 @@ const { Title } = Typography
 
 export default function RequirementListPage() {
   const navigate = useNavigate()
-  const { items, loading, error } = useRequirements()
+  const { currentId, current } = useProjects()
+  const { items, loading, error } = useRequirements(undefined, currentId ?? undefined)
 
   const columns = [
     { title: '标题', dataIndex: 'title', key: 'title' },
@@ -43,7 +45,7 @@ export default function RequirementListPage() {
   return (
     <Space direction="vertical" style={{ width: '100%' }} size="middle">
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <Title level={3} style={{ margin: 0 }}>需求</Title>
+        <Title level={3} style={{ margin: 0 }}>需求{current ? ` · ${current.name}` : ''}</Title>
         <Button type="primary" onClick={() => navigate('/requirements/new')}>+ 新建需求</Button>
       </div>
       {error && <Alert type="error" message={error} />}

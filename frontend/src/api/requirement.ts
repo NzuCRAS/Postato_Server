@@ -1,17 +1,22 @@
 // 数据访问层:需求接口
 import { request } from './client'
-import type { Requirement, RequirementSummary, Structured } from '../types'
+import type { ProjectDocLink, Requirement, RequirementSummary, Structured } from '../types'
 
 export interface RequirementInput {
   title?: string
   descriptionMd?: string
   structured?: Structured
   status?: string
+  projectId?: string
+  docLinks?: ProjectDocLink[]
 }
 
-export function listRequirements(status?: string): Promise<RequirementSummary[]> {
-  const q = status ? `?status=${encodeURIComponent(status)}` : ''
-  return request<RequirementSummary[]>(`/requirements${q}`)
+export function listRequirements(status?: string, projectId?: string): Promise<RequirementSummary[]> {
+  const qs = new URLSearchParams()
+  if (status) qs.set('status', status)
+  if (projectId) qs.set('projectId', projectId)
+  const q = qs.toString()
+  return request<RequirementSummary[]>(`/requirements${q ? `?${q}` : ''}`)
 }
 
 export function getRequirement(id: string): Promise<Requirement> {

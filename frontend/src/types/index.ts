@@ -133,6 +133,7 @@ export interface Requirement {
   version: number
   structured: Structured
   devPlan?: DevPlan
+  docLinks?: ProjectDocLink[]
   createdBy?: string
   createdAt: string
   updatedAt: string
@@ -151,4 +152,48 @@ export interface WikiPageItem {
   status: string
   version: number
   updatedAt: string
+}
+
+// ---- 项目(Project)+ 结构树 ----
+
+export interface ProjectRepo {
+  id: string
+  name?: string
+  url: string
+  provider?: string
+  default_branch?: string
+}
+
+export interface ProjectDocLink {
+  type?: string // design | standard | reference
+  title?: string
+  path: string
+}
+
+export interface Project {
+  id: string
+  name: string
+  descriptionMd?: string
+  repos?: ProjectRepo[]
+  docLinks?: ProjectDocLink[]
+  createdAt?: string
+  updatedAt?: string
+}
+
+export interface ArchNode {
+  id: string
+  projectId: string
+  parentId?: string
+  path: string
+  layer?: string // L0..L4
+  type?: string
+  title: string
+  description?: string
+  tags?: string[]
+  related_docs?: string[]
+  related_code?: string[]
+  related_requirements?: string[]
+  source?: string // manual | sync
+  repoId?: string
+  status?: string // active | archived
 }

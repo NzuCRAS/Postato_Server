@@ -3,7 +3,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { listRequirements } from '../api/requirement'
 import type { RequirementSummary } from '../types'
 
-export function useRequirements(status?: string) {
+export function useRequirements(status?: string, projectId?: string) {
   const [items, setItems] = useState<RequirementSummary[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -12,13 +12,13 @@ export function useRequirements(status?: string) {
     setLoading(true)
     setError(null)
     try {
-      setItems(await listRequirements(status))
+      setItems(await listRequirements(status, projectId))
     } catch (e) {
       setError(e instanceof Error ? e.message : '加载失败')
     } finally {
       setLoading(false)
     }
-  }, [status])
+  }, [status, projectId])
 
   useEffect(() => {
     load()

@@ -1,20 +1,23 @@
-// 视图层:主框架布局(侧边菜单 + 顶栏 + 内容区)。
-import { Button, Layout, Menu, Typography } from 'antd'
+// 视图层:主框架布局(侧边菜单 + 顶栏[项目选择器] + 内容区)。
+import { Button, Layout, Menu, Select, Space, Typography } from 'antd'
 import { Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext'
+import { useProjects } from '../features/ProjectContext'
 
 const { Header, Sider, Content } = Layout
 const { Text } = Typography
 
 export default function AppLayout() {
   const { user, logout } = useAuth()
+  const { projects, currentId, setCurrentId } = useProjects()
   const navigate = useNavigate()
   const location = useLocation()
 
-  // 详情页 /requirements/xxx 也高亮“需求”菜单
   const selectedKey = location.pathname.startsWith('/requirements')
     ? '/requirements'
-    : location.pathname
+    : location.pathname.startsWith('/projects')
+      ? '/projects'
+      : location.pathname
 
   return (
     <Layout style={{ minHeight: '100vh' }}>
@@ -26,6 +29,7 @@ export default function AppLayout() {
           selectedKeys={[selectedKey]}
           onClick={(e) => navigate(e.key)}
           items={[
+            { key: '/projects', label: '项目' },
             { key: '/requirements', label: '需求' },
             { key: '/wiki', label: '知识库' },
             { key: '/settings', label: '设置 / API Key' },
@@ -33,9 +37,21 @@ export default function AppLayout() {
         />
       </Sider>
       <Layout>
-        <Header style={{ background: '#fff', display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 12 }}>
-          <Text>{user?.username}</Text>
-          <Button onClick={logout}>登出</Button>
+        <Header style={{ background: '#fff', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
+          <Space>
+            <Text type="secondary">当前项目</Text>
+            <Select
+              style={{ minWidth: 200 }}
+              value={currentId ?? undefined}
+              placeholder="选择项目"
+              onChange={(v) => setCurrentId(v)}
+              options={projects.map((p) => ({ value: p.id, label: p.name }))}
+            />
+          </Space>
+          <Space>
+            <Text>{user?.username}</Text>
+            <Button onClick={logout}>登出</Button>
+          </Space>
         </Header>
         <Content style={{ margin: 24 }}>
           <Outlet />
