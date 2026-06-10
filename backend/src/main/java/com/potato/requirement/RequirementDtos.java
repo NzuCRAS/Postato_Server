@@ -9,7 +9,9 @@ record RequirementRequest(
         String title,
         String descriptionMd,
         Structured structured,
-        String status) {
+        String status,
+        String projectId,
+        java.util.List<com.potato.common.DocLink> docLinks) {
 }
 
 /** 状态变更请求体 */

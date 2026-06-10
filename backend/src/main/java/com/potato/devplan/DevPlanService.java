@@ -72,6 +72,7 @@ public class DevPlanService {
         }
 
         boolean appendedLog = false;
+        List<String> warnings = new ArrayList<>();
 
         // 状态变更
         if (in.status() != null && !in.status().isBlank()) {
@@ -83,13 +84,18 @@ public class DevPlanService {
                     && (in.blockedReason() == null || in.blockedReason().isBlank())) {
                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "标记 blocked 必须填写 blocked_reason");
             }
-            String from = node.getStatus();
-            node.setStatus(in.status());
-            node.setBlockedReason("blocked".equals(in.status()) ? in.blockedReason() : null);
-            node.getLog().add(log(actor, "status_change",
-                    in.logMessage() != null ? in.logMessage() : "状态变更",
-                    in.logDetail(), from, in.status(), in.commit()));
-            appendedLog = true;
+            // 小保护:in_progress 仅当节点当前为 todo 时生效,避免把 done/blocked 回退
+            if ("in_progress".equals(in.status()) && !"todo".equals(node.getStatus())) {
+                warnings.add("节点当前为 " + node.getStatus() + ",未回退到 in_progress");
+            } else {
+                String from = node.getStatus();
+                node.setStatus(in.status());
+                node.setBlockedReason("blocked".equals(in.status()) ? in.blockedReason() : null);
+                node.getLog().add(log(actor, "status_change",
+                        in.logMessage() != null ? in.logMessage() : "状态变更",
+                        in.logDetail(), from, in.status(), in.commit()));
+                appendedLog = true;
+            }
         }
 
         // 产物(逐字段覆盖非空值)
@@ -135,7 +141,8 @@ public class DevPlanService {
         req.setUpdatedAt(now);
         requirementRepository.save(req);
 
-        return new UpdateResult(node, computeWarnings(node));
+        warnings.addAll(computeWarnings(node));
+        return new UpdateResult(node, warnings);
     }
 
     /** 新增纠偏(任何可查看者) */

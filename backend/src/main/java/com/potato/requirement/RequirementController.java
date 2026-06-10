@@ -31,9 +31,10 @@ public class RequirementController {
 
     @GetMapping
     public List<RequirementSummary> list(@AuthenticationPrincipal User user,
-                                         @RequestParam(required = false) String status) {
+                                         @RequestParam(required = false) String status,
+                                         @RequestParam(required = false) String projectId) {
         permissionService.check(user, "requirement", "view");
-        return service.list(status).stream()
+        return service.list(status, projectId).stream()
                 .map(r -> new RequirementSummary(r.getId(), r.getTitle(), r.getStatus(), r.getVersion(), r.getUpdatedAt()))
                 .toList();
     }
@@ -48,7 +49,8 @@ public class RequirementController {
     public Requirement create(@AuthenticationPrincipal User user,
                               @Valid @RequestBody RequirementRequest req) {
         permissionService.check(user, "requirement", "create");
-        return service.create(req.title(), req.descriptionMd(), req.structured(), req.status(), user.getId());
+        return service.create(req.title(), req.descriptionMd(), req.structured(), req.status(),
+                req.projectId(), req.docLinks(), user.getId());
     }
 
     @PutMapping("/{id}")
@@ -56,7 +58,7 @@ public class RequirementController {
                               @PathVariable String id,
                               @RequestBody RequirementRequest req) {
         permissionService.check(user, "requirement", "edit_structured");
-        return service.update(id, req.title(), req.descriptionMd(), req.structured());
+        return service.update(id, req.title(), req.descriptionMd(), req.structured(), req.docLinks());
     }
 
     @PatchMapping("/{id}/status")

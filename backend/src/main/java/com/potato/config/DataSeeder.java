@@ -2,6 +2,8 @@ package com.potato.config;
 
 import com.potato.permission.PermissionRule;
 import com.potato.permission.PermissionRuleRepository;
+import com.potato.project.Project;
+import com.potato.project.ProjectRepository;
 import com.potato.user.User;
 import com.potato.user.UserRepository;
 import org.slf4j.Logger;
@@ -27,15 +29,18 @@ public class DataSeeder implements CommandLineRunner {
 
     private final UserRepository userRepository;
     private final PermissionRuleRepository permissionRuleRepository;
+    private final ProjectRepository projectRepository;
     private final PasswordEncoder passwordEncoder;
     private final String adminPassword;
 
     public DataSeeder(UserRepository userRepository,
                       PermissionRuleRepository permissionRuleRepository,
+                      ProjectRepository projectRepository,
                       PasswordEncoder passwordEncoder,
                       @Value("${app.seed.admin-password:admin123}") String adminPassword) {
         this.userRepository = userRepository;
         this.permissionRuleRepository = permissionRuleRepository;
+        this.projectRepository = projectRepository;
         this.passwordEncoder = passwordEncoder;
         this.adminPassword = adminPassword;
     }
@@ -43,6 +48,7 @@ public class DataSeeder implements CommandLineRunner {
     @Override
     public void run(String... args) {
         seedAdmin();
+        seedDefaultProject();
         seedPermissionRules();
     }
 
@@ -60,6 +66,28 @@ public class DataSeeder implements CommandLineRunner {
         log.info("==> Seeded default admin (username=admin, password={}). CHANGE IT IN PRODUCTION!", adminPassword);
     }
 
+    private void seedDefaultProject() {
+        if (projectRepository.findById("default").isPresent()) {
+            return;
+        }
+        Project p = new Project();
+        p.setId("default");
+        p.setName("Potato 平台");
+        p.setDescriptionMd("默认项目(自举):用平台开发平台。");
+        Project.Repo repo = new Project.Repo();
+        repo.setId("repo_default");
+        repo.setName("Postato_Server");
+        repo.setUrl("https://github.com/NzuCRAS/Postato_Server");
+        repo.setProvider("github");
+        repo.setDefaultBranch("main");
+        p.getRepos().add(repo);
+        Instant now = Instant.now();
+        p.setCreatedAt(now);
+        p.setUpdatedAt(now);
+        projectRepository.save(p);
+        log.info("==> Seeded default project (id=default).");
+    }
+
     private void seedPermissionRules() {
         if (permissionRuleRepository.count() > 0) {
             return;
@@ -73,7 +101,12 @@ public class DataSeeder implements CommandLineRunner {
                 rule("wiki", "edit", "development", "product"),
                 rule("dev_plan", "create", "development"),
                 rule("dev_plan", "update", "development"),
-                rule("dev_plan", "comment", "development", "testing", "product")
+                rule("dev_plan", "comment", "development", "testing", "product"),
+                rule("project", "view", "development", "testing", "product"),
+                rule("project", "create", "product"),
+                rule("project", "edit", "product"),
+                rule("arch", "edit_management", "development", "product"),
+                rule("arch", "sync", "development")
         );
         permissionRuleRepository.saveAll(rules);
         log.info("==> Seeded {} permission rules.", rules.size());

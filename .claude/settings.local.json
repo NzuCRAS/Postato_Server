@@ -14,7 +14,8 @@
       "Bash(git remote *)",
       "Bash(git -c core.autocrlf=false add docs/superpowers/specs/2026-06-10-herness-d-round-knowledge-design.md)",
       "Bash(git -c core.autocrlf=false commit -q -m 'docs: D 轮设计 spec — 技术方案/知识沉淀\\(复用 Wiki\\)+ Herness 契约 prompt' -m 'Co-Authored-By: Claude Opus 4.8 \\(1M context\\) <noreply@anthropic.com>')",
-      "mcp__potato__write_tech_proposal"
+      "mcp__potato__write_tech_proposal",
+      "mcp__potato__write_knowledge"
     ]
   },
   "enabledMcpjsonServers": [

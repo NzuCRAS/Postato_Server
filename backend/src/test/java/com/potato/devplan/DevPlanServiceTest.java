@@ -150,4 +150,15 @@ class DevPlanServiceTest {
         assertThat(out.getUrl()).isEqualTo("https://github.com/x/y");
         assertThat(out.getDefaultBranch()).isEqualTo("main");
     }
+
+    @Test
+    void in_progress_does_not_revert_done_node() {
+        reqWithPlan();
+        service.updateNode("r1", "node_1",
+                new UpdateNodeRequest("done", null, null, null, null, null, null), "ai");
+        UpdateResult r = service.updateNode("r1", "node_1",
+                new UpdateNodeRequest("in_progress", null, null, null, null, null, null), "ai");
+        assertThat(r.node().getStatus()).isEqualTo("done"); // 未回退
+        assertThat(r.warnings()).anyMatch(w -> w.contains("未回退"));
+    }
 }

@@ -20,10 +20,12 @@ public class RequirementService {
         this.repository = repository;
     }
 
-    public List<Requirement> list(String status) {
-        if (status != null && !status.isBlank()) {
-            return repository.findByStatus(status);
-        }
+    public List<Requirement> list(String status, String projectId) {
+        boolean hasProject = projectId != null && !projectId.isBlank();
+        boolean hasStatus = status != null && !status.isBlank();
+        if (hasProject && hasStatus) return repository.findByProjectIdAndStatus(projectId, status);
+        if (hasProject) return repository.findByProjectIdOrderByUpdatedAtDesc(projectId);
+        if (hasStatus) return repository.findByStatus(status);
         return repository.findAllByOrderByUpdatedAtDesc();
     }
 
@@ -32,15 +34,17 @@ public class RequirementService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "需求不存在"));
     }
 
-    public Requirement create(String title, String descriptionMd, Structured structured, String status, String userId) {
+    public Requirement create(String title, String descriptionMd, Structured structured, String status,
+                              String projectId, List<com.potato.common.DocLink> docLinks, String userId) {
         if (title == null || title.isBlank()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "标题必填");
         }
         Requirement r = new Requirement();
-        r.setProjectId(DEFAULT_PROJECT);
+        r.setProjectId(projectId != null && !projectId.isBlank() ? projectId : DEFAULT_PROJECT);
         r.setTitle(title);
         r.setDescriptionMd(descriptionMd);
         r.setStructured(structured != null ? structured : new Structured());
+        if (docLinks != null) r.setDocLinks(docLinks);
         r.setStatus(normalizeStatus(status, "draft"));
         r.setVersion(1);
         r.setCreatedBy(userId);
@@ -50,10 +54,12 @@ public class RequirementService {
         return repository.save(r);
     }
 
-    public Requirement update(String id, String title, String descriptionMd, Structured structured) {
+    public Requirement update(String id, String title, String descriptionMd, Structured structured,
+                              List<com.potato.common.DocLink> docLinks) {
         Requirement r = get(id);
         if (title != null) r.setTitle(title);
         if (descriptionMd != null) r.setDescriptionMd(descriptionMd);
+        if (docLinks != null) r.setDocLinks(docLinks);
         if (structured != null) {
             r.setStructured(structured);
             r.setVersion(r.getVersion() + 1); // structured 变更时版本自增
