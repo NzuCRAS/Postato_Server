@@ -21,6 +21,8 @@ import java.util.UUID;
 public class DevPlanService {
 
     private static final Set<String> VALID_STATUS = Set.of("todo", "in_progress", "done", "blocked");
+    private static final Set<String> VALID_KINDS = Set.of("compile", "typecheck", "test", "lint", "manual", "e2e");
+    private static final Set<String> VALID_RESULTS = Set.of("pass", "fail");
 
     private final RequirementRepository requirementRepository;
 
@@ -127,6 +129,24 @@ public class DevPlanService {
                 }
                 node.getLog().add(log(actor, "acceptance", sb.toString(), null, null, null, null));
             }
+        }
+
+        // 验证记录(追加累积):AI 本地跑验证后上报,后端填 at,并加一条 verify 工作日志
+        if (in.verifications() != null && !in.verifications().isEmpty()) {
+            Instant vnow = Instant.now();
+            List<String> parts = new ArrayList<>();
+            for (DevPlan.Verification v : in.verifications()) {
+                if (v.getKind() != null && !VALID_KINDS.contains(v.getKind())) {
+                    throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "非法验证类型: " + v.getKind());
+                }
+                if (v.getResult() != null && !VALID_RESULTS.contains(v.getResult())) {
+                    throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "非法验证结果: " + v.getResult());
+                }
+                v.setAt(vnow);
+                node.getVerifications().add(v);
+                parts.add(v.getKind() + "=" + v.getResult());
+            }
+            node.getLog().add(log(actor, "verify", "上报验证:" + String.join("、", parts), null, null, null, null));
         }
 
         // 仅补日志/commit(没有状态变更时)
@@ -243,6 +263,10 @@ public class DevPlanService {
         }
         if (!hasAnyArtifact(node)) {
             warnings.add("节点标记为完成,但没有任何 commit 或产物(PR)。");
+        }
+        boolean anyVerifyPass = node.getVerifications().stream().anyMatch(v -> "pass".equals(v.getResult()));
+        if (!anyVerifyPass) {
+            warnings.add("节点标记为完成,但没有任何通过的验证记录(verification)。");
         }
         boolean anyUnchecked = node.getAcceptanceCriteria().stream().anyMatch(a -> !a.isChecked());
         if (anyUnchecked) {

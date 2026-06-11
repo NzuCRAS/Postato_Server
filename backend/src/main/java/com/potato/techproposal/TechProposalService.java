@@ -47,7 +47,7 @@ public class TechProposalService {
         DevPlan.Artifacts artifacts = new DevPlan.Artifacts();
         artifacts.setTechProposalId(path);
         String status = markInProgress ? "in_progress" : null;
-        UpdateNodeRequest up = new UpdateNodeRequest(status, artifacts, "生成技术方案", null, null, null, null);
+        UpdateNodeRequest up = new UpdateNodeRequest(status, artifacts, "生成技术方案", null, null, null, null, null);
         UpdateResult r = devPlanService.updateNode(reqId, nodeId, up, actor);
 
         return new Result(path, r.node());

@@ -71,6 +71,10 @@ public class DevPlan {
         /** 人对 AI 的纠偏指令(独立于 log,有生命周期) */
         private List<Correction> corrections = new ArrayList<>();
 
+        /** 验证记录(累积):AI 本地跑验证后上报;done 时软规则检查是否有通过的验证 */
+        @JsonProperty("verifications")
+        private List<Verification> verifications = new ArrayList<>();
+
         private List<Node> children = new ArrayList<>();
     }
 
@@ -111,6 +115,17 @@ public class DevPlan {
         private String url;
         private String message;
         private List<String> files = new ArrayList<>();
+    }
+
+    /** 验证记录:AI 本地跑验证后上报的一条凭据 */
+    @Data
+    public static class Verification {
+        private String kind;                // compile | typecheck | test | lint | manual | e2e
+        private String command;             // 跑了什么(manual 可空)
+        private String result;              // pass | fail
+        private String summary;             // 结果摘要,如 "10 tests, 0 failed"
+        private List<String> covers = new ArrayList<>();   // 关联的验收点文本(可选)
+        private Instant at;                 // 后端填
     }
 
     @Data

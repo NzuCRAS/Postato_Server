@@ -49,7 +49,7 @@ class DevPlanServiceTest {
     @Test
     void blocked_without_reason_is_rejected() {
         reqWithPlan();
-        UpdateNodeRequest in = new UpdateNodeRequest("blocked", null, null, null, null, null, null);
+        UpdateNodeRequest in = new UpdateNodeRequest("blocked", null, null, null, null, null, null, null);
         assertThatThrownBy(() -> service.updateNode("r1", "node_1", in, "human"))
                 .isInstanceOf(ResponseStatusException.class)
                 .hasMessageContaining("blocked_reason");
@@ -58,7 +58,7 @@ class DevPlanServiceTest {
     @Test
     void done_without_artifacts_or_unchecked_criteria_warns() {
         reqWithPlan();
-        UpdateNodeRequest in = new UpdateNodeRequest("done", null, "完成了", null, null, null, null);
+        UpdateNodeRequest in = new UpdateNodeRequest("done", null, "完成了", null, null, null, null, null);
         UpdateResult r = service.updateNode("r1", "node_1", in, "ai");
         assertThat(r.warnings()).anyMatch(w -> w.contains("commit") || w.contains("产物"));
         assertThat(r.warnings()).anyMatch(w -> w.contains("验收"));
@@ -67,7 +67,7 @@ class DevPlanServiceTest {
     @Test
     void status_change_appends_log_with_from_to_and_actor() {
         reqWithPlan();
-        UpdateNodeRequest in = new UpdateNodeRequest("in_progress", null, "开工", "用antd", null, null, null);
+        UpdateNodeRequest in = new UpdateNodeRequest("in_progress", null, "开工", "用antd", null, null, null, null);
         UpdateResult r = service.updateNode("r1", "node_1", in, "ai");
         DevPlan.LogEntry last = r.node().getLog().get(r.node().getLog().size() - 1);
         assertThat(last.getAction()).isEqualTo("status_change");
@@ -83,7 +83,7 @@ class DevPlanServiceTest {
         DevPlan.Commit commit = new DevPlan.Commit();
         commit.setSha("abc123");
         commit.setMessage("feat: x");
-        UpdateNodeRequest in = new UpdateNodeRequest("done", null, "完成", null, null, commit, null);
+        UpdateNodeRequest in = new UpdateNodeRequest("done", null, "完成", null, null, commit, null, null);
         UpdateResult r = service.updateNode("r1", "node_1", in, "ai");
         DevPlan.LogEntry last = r.node().getLog().get(r.node().getLog().size() - 1);
         assertThat(last.getCommit()).isNotNull();
@@ -132,7 +132,7 @@ class DevPlanServiceTest {
         DevPlan.AcceptanceItem item = new DevPlan.AcceptanceItem();
         item.setText("必填校验");
         item.setChecked(true);
-        UpdateNodeRequest in = new UpdateNodeRequest(null, null, null, null, null, null, List.of(item));
+        UpdateNodeRequest in = new UpdateNodeRequest(null, null, null, null, null, null, List.of(item), null);
         UpdateResult r = service.updateNode("r1", "node_1", in, "human");
         DevPlan.LogEntry last = r.node().getLog().get(r.node().getLog().size() - 1);
         assertThat(last.getAction()).isEqualTo("acceptance");
@@ -155,10 +155,54 @@ class DevPlanServiceTest {
     void in_progress_does_not_revert_done_node() {
         reqWithPlan();
         service.updateNode("r1", "node_1",
-                new UpdateNodeRequest("done", null, null, null, null, null, null), "ai");
+                new UpdateNodeRequest("done", null, null, null, null, null, null, null), "ai");
         UpdateResult r = service.updateNode("r1", "node_1",
-                new UpdateNodeRequest("in_progress", null, null, null, null, null, null), "ai");
+                new UpdateNodeRequest("in_progress", null, null, null, null, null, null, null), "ai");
         assertThat(r.node().getStatus()).isEqualTo("done"); // 未回退
         assertThat(r.warnings()).anyMatch(w -> w.contains("未回退"));
+    }
+
+    @Test
+    void verification_appended_with_at_and_verify_log() {
+        reqWithPlan();
+        DevPlan.Verification v = new DevPlan.Verification();
+        v.setKind("test");
+        v.setResult("pass");
+        v.setSummary("10 tests, 0 failed");
+        UpdateNodeRequest in = new UpdateNodeRequest(null, null, null, null, null, null, null, List.of(v));
+        UpdateResult r = service.updateNode("r1", "node_1", in, "ai");
+        assertThat(r.node().getVerifications()).hasSize(1);
+        assertThat(r.node().getVerifications().get(0).getAt()).isNotNull();
+        DevPlan.LogEntry last = r.node().getLog().get(r.node().getLog().size() - 1);
+        assertThat(last.getAction()).isEqualTo("verify");
+        assertThat(last.getSummary()).contains("test=pass");
+    }
+
+    @Test
+    void done_with_passing_verification_clears_verify_warning() {
+        reqWithPlan();
+        DevPlan.Commit commit = new DevPlan.Commit();
+        commit.setSha("abc");
+        DevPlan.AcceptanceItem item = new DevPlan.AcceptanceItem();
+        item.setText("必填校验");
+        item.setChecked(true);
+        DevPlan.Verification v = new DevPlan.Verification();
+        v.setKind("test");
+        v.setResult("pass");
+        v.setSummary("ok");
+        UpdateNodeRequest in = new UpdateNodeRequest("done", null, "完成", null, null, commit, List.of(item), List.of(v));
+        UpdateResult r = service.updateNode("r1", "node_1", in, "ai");
+        assertThat(r.warnings()).noneMatch(w -> w.contains("验证")); // 有通过验证 → 无验证警告
+    }
+
+    @Test
+    void illegal_verification_kind_rejected() {
+        reqWithPlan();
+        DevPlan.Verification v = new DevPlan.Verification();
+        v.setKind("magic");
+        v.setResult("pass");
+        UpdateNodeRequest in = new UpdateNodeRequest(null, null, null, null, null, null, null, List.of(v));
+        assertThatThrownBy(() -> service.updateNode("r1", "node_1", in, "ai"))
+                .isInstanceOf(ResponseStatusException.class).hasMessageContaining("验证类型");
     }
 }

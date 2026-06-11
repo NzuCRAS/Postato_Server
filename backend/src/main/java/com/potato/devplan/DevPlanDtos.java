@@ -35,7 +35,8 @@ public final class DevPlanDtos {
             @JsonProperty("log_detail") String logDetail,
             @JsonProperty("blocked_reason") String blockedReason,
             DevPlan.Commit commit,
-            @JsonProperty("acceptance_criteria") List<DevPlan.AcceptanceItem> acceptanceCriteria) {
+            @JsonProperty("acceptance_criteria") List<DevPlan.AcceptanceItem> acceptanceCriteria,
+            List<DevPlan.Verification> verifications) {
     }
 
     /** 更新节点响应:节点 + 软警告 */
