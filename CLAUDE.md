@@ -20,6 +20,13 @@
 6. **重视 warnings** —— `update_dev_plan_node` 响应里的 `warnings`(无产物/验收未勾/子节点未完成)**必须处理**:要么补产物/勾验收,要么在 `log_detail` 说明为何可豁免。**严禁**无产物却谎报完成。
 7. **收尾沉淀** —— 把本次可复用的经验用 `write_knowledge(path, title, content, tags)` 写进知识库(选好路径如 `/vue/toast`、标签如 `toast`),下次相似场景可直接 `search_knowledge` 复用。临时性技术方案放 `/tech-proposals/…` 或打 `tmp` 标签,不污染知识库。
 
+## 项目结构树共建(arch tree)
+
+**建/改项目结构树时必须走「逐层共建协议」,禁止一次性生成整棵树。**
+1. 先 `search_knowledge("结构树 逐层共建")` 或读知识库 `/agent/arch-coauthoring` 取协议全文。
+2. 按 **BFS 逐层**(L0 系统→L1 领域→L2 限界上下文→L3 业务模块)与用户**对话澄清**,每层确认后用 `upsert_arch_layer(project_id, parent_path, nodes)` 写**该层**(无 children,一次一层)。
+3. **层级铁律**:L3=业务模块,`XxxService` 等实现单元属 L4(交 `sync_project_modules`);`description` 必须写清**职责 + 边界**,勿同义反复。
+
 ## 干预与纠偏
 
 - 人可在节点上留**自然语言纠偏指令**(corrections)。你每次 `get_requirement_detail` 都要看 `open_corrections`,据此调整,处理完请人确认(由人在界面标"已解决")。
@@ -50,8 +57,10 @@
 
 > 新增/修改 MCP 工具后,需重连 MCP(重开会话或重载)才能看到新工具名。
 
-## 可用 MCP 工具(9)
+## 可用 MCP 工具(14)
 
-`get_requirement_detail` · `search_knowledge` · `create_dev_plan` · `update_dev_plan_node` · `add_dev_plan_nodes` · `reset_dev_plan` · `set_dev_plan_repo` · `write_knowledge` · `write_tech_proposal`
+- **需求/知识**:`get_requirement_detail` · `create_requirement` · `search_knowledge` · `write_knowledge` · `write_tech_proposal`
+- **进度树**:`create_dev_plan` · `update_dev_plan_node` · `add_dev_plan_nodes` · `reset_dev_plan` · `set_dev_plan_repo`
+- **项目/结构树**:`get_project_detail` · `get_architecture` · `upsert_arch_layer`(逐层共建,见 `/agent/arch-coauthoring`) · `sync_project_modules`
 
 > 详细设计见 `docs/平台开发说明.md` 与 `docs/superpowers/specs/`。本契约也沉淀在知识库 `/agent/herness-contract`。
