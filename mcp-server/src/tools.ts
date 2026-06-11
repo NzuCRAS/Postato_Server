@@ -454,6 +454,8 @@ function summarizeArchNode(n: Record<string, any>) {
     layer: n.layer,
     type: n.type,
     title: n.title,
+    description: n.description,
+    impl_status: n.impl_status,
     tags: n.tags,
     related_docs: n.related_docs,
     related_code: n.related_code,
