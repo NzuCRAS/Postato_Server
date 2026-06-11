@@ -15,9 +15,10 @@
 5. **逐叶子节点推进**:
    - 开工前 `update_dev_plan_node(node_id, status="in_progress", log_message, log_detail="为什么这么做")`。
    - 编码 → 提交一个 commit 到 GitHub。
-   - 回填 `update_dev_plan_node(node_id, status="done", commit={sha,url,message,files}, acceptance_criteria=[...勾上已满足的...], log_detail)`。
+   - **done 前本地验证**(编译/测试/lint)→ 回填时带 `verifications=[{kind,command,result,summary}]` 上报;**done 时无任何 pass 验证会软警告**。
+   - 回填 `update_dev_plan_node(node_id, status="done", commit={sha,url,message,files}, verifications=[...], acceptance_criteria=[...勾上已满足的...], log_detail)`。
    - **一个节点 ≈ 一个 commit**;后续修 bug 再记一条带 commit 的日志。
-6. **重视 warnings** —— `update_dev_plan_node` 响应里的 `warnings`(无产物/验收未勾/子节点未完成)**必须处理**:要么补产物/勾验收,要么在 `log_detail` 说明为何可豁免。**严禁**无产物却谎报完成。
+6. **重视 warnings** —— `update_dev_plan_node` 响应里的 `warnings`(无产物/无通过验证/验收未勾/子节点未完成)**必须处理**:要么补产物/验证/勾验收,要么在 `log_detail` 说明为何可豁免。**严禁**无产物或无验证却谎报完成。
 7. **收尾沉淀** —— 把本次可复用的经验用 `write_knowledge(path, title, content, tags)` 写进知识库(选好路径如 `/vue/toast`、标签如 `toast`),下次相似场景可直接 `search_knowledge` 复用。临时性技术方案放 `/tech-proposals/…` 或打 `tmp` 标签,不污染知识库。
 
 ## 项目结构树共建(arch tree)
