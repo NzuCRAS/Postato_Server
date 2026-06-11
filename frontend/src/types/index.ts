@@ -196,4 +196,5 @@ export interface ArchNode {
   source?: string // manual | sync
   repoId?: string
   status?: string // active | archived
+  impl_status?: string // planned | in_progress | done(叶子手动标,非叶子后端聚合)
 }

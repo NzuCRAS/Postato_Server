@@ -17,6 +17,13 @@ const LAYER_COLOR: Record<string, string> = {
 }
 const layerColor = (l?: string) => LAYER_COLOR[l ?? ''] ?? '#8c8c8c'
 
+// 实现状态:配色 + 标签(antd Tag color)。蓝图含规划,一眼分清落地与否。
+const IMPL_STATUS: Record<string, { color: string; label: string }> = {
+  planned: { color: 'default', label: '规划中' },
+  in_progress: { color: 'processing', label: '实现中' },
+  done: { color: 'success', label: '已完成' },
+}
+
 type ChildrenMap = Record<string, ArchNode[]>
 
 function buildChildrenMap(nodes: ArchNode[]): { roots: ArchNode[]; childrenMap: ChildrenMap } {
@@ -66,6 +73,11 @@ function NodeCard({
         </span>
       )}
       <Text strong>{node.title}</Text>
+      {node.impl_status && IMPL_STATUS[node.impl_status] && (
+        <Tag color={IMPL_STATUS[node.impl_status].color} style={{ marginInlineEnd: 0 }}>
+          {IMPL_STATUS[node.impl_status].label}
+        </Tag>
+      )}
       {node.type && <Text type="secondary" style={{ fontSize: 12 }}>{node.type}</Text>}
       {node.source === 'sync' && <Tag color="geekblue" style={{ marginInlineEnd: 0 }}>sync</Tag>}
       {(node.tags ?? []).slice(0, 4).map((t) => (
@@ -241,6 +253,9 @@ export default function ArchitectureTree({ pid }: { pid: string }) {
             <Text type="secondary">{sel.path}</Text>
             <Space wrap>
               {sel.type && <Tag>{sel.type}</Tag>}
+              {sel.impl_status && IMPL_STATUS[sel.impl_status] && (
+                <Tag color={IMPL_STATUS[sel.impl_status].color}>{IMPL_STATUS[sel.impl_status].label}</Tag>
+              )}
               <Tag color={sel.source === 'sync' ? 'geekblue' : 'green'}>{sel.source}</Tag>
               {(sel.tags ?? []).map((t) => <Tag key={t}>{t}</Tag>)}
             </Space>
