@@ -110,7 +110,7 @@ export function registerTools(server: McpServer, apiKey: string | undefined): vo
 
   server.tool(
     'update_dev_plan_node',
-    '更新某个进度节点:状态、artifacts(branch/pr_number/pr_url/tests_added)、commit(本次提交,挂到工作日志)、log_message(摘要)/log_detail(为什么这么做)、blocked_reason。完成一段编码后用本工具上报 commit。响应可能含 warnings(软提醒,不阻断)。',
+    '更新某个进度节点:状态、artifacts(branch/pr_number/pr_url/tests_added)、commit(本次提交,挂到工作日志)、verifications(本地验证记录:kind/command/result/summary)、log_message(摘要)/log_detail(为什么这么做)、blocked_reason。done 前应本地跑验证(编译/测试/lint)并经 verifications 上报;done 时无通过验证会软警告。响应可能含 warnings(软提醒,不阻断)。',
     {
       requirement_id: z.string().describe('需求 ID'),
       node_id: z.string().describe('节点 ID,如 node_1'),
@@ -139,15 +139,27 @@ export function registerTools(server: McpServer, apiKey: string | undefined): vo
         .array(z.object({ text: z.string(), checked: z.boolean() }))
         .optional()
         .describe('整列表替换该节点验收点(先用 get_requirement_detail 取当前项,把已满足的 checked 改 true,再把完整列表回传)'),
+      verifications: z
+        .array(
+          z.object({
+            kind: z.enum(['compile', 'typecheck', 'test', 'lint', 'manual', 'e2e']),
+            command: z.string().optional().describe('跑了什么,如 "mvn -Dtest=X test"'),
+            result: z.enum(['pass', 'fail']),
+            summary: z.string().optional().describe('结果摘要,如 "10 tests, 0 failed"'),
+            covers: z.array(z.string()).optional().describe('关联的验收点文本(可选)'),
+          }),
+        )
+        .optional()
+        .describe('本地验证记录(追加累积):done 前应跑编译/测试/lint 并上报;done 时无任何 pass 验证会软警告'),
     },
-    async ({ requirement_id, node_id, status, artifacts, commit, log_message, log_detail, blocked_reason, acceptance_criteria }) => {
+    async ({ requirement_id, node_id, status, artifacts, commit, log_message, log_detail, blocked_reason, acceptance_criteria, verifications }) => {
       try {
         const res = await backendRequest<unknown>(
           `/requirements/${requirement_id}/dev-plan/nodes/${node_id}`,
           apiKey,
           {
             method: 'PATCH',
-            body: JSON.stringify({ status, artifacts, commit, log_message, log_detail, blocked_reason, acceptance_criteria }),
+            body: JSON.stringify({ status, artifacts, commit, log_message, log_detail, blocked_reason, acceptance_criteria, verifications }),
           },
         )
         return { content: [{ type: 'text' as const, text: JSON.stringify(res, null, 2) }] }
