@@ -86,6 +86,15 @@ export interface DevPlanCorrection {
   resolved: boolean
 }
 
+export interface DevPlanVerification {
+  kind: string // compile | typecheck | test | lint | manual | e2e
+  command?: string
+  result: string // pass | fail
+  summary?: string
+  covers?: string[]
+  at?: string
+}
+
 export interface DevPlanNode {
   id: string
   title: string
@@ -98,6 +107,7 @@ export interface DevPlanNode {
   artifacts?: DevPlanArtifacts
   log?: DevPlanLog[]
   corrections?: DevPlanCorrection[]
+  verifications?: DevPlanVerification[]
   children?: DevPlanNode[]
 }
 

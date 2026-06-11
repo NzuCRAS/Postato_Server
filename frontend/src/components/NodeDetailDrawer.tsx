@@ -165,6 +165,27 @@ export default function NodeDetailDrawer({
         )}
       </Space>
 
+      <Divider orientation="left" plain>验证记录</Divider>
+      {(node.verifications ?? []).length ? (
+        <Space direction="vertical" size={4} style={{ width: '100%' }}>
+          {(node.verifications ?? []).map((v, i) => (
+            <div key={i}>
+              <Space>
+                <Tag color={v.result === 'pass' ? 'success' : 'error'}>
+                  {v.kind} · {v.result === 'pass' ? '通过' : '失败'}
+                </Tag>
+                {v.summary && <Text type="secondary">{v.summary}</Text>}
+              </Space>
+              {v.command && (
+                <div><Text code style={{ fontSize: 12 }}>{v.command}</Text></div>
+              )}
+            </div>
+          ))}
+        </Space>
+      ) : (
+        <Text type="secondary">(无验证记录)</Text>
+      )}
+
       <Divider orientation="left" plain>工作日志</Divider>
       {(node.log ?? []).length ? (
         <Timeline
