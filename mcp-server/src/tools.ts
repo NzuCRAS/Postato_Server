@@ -400,6 +400,46 @@ export function registerTools(server: McpServer, apiKey: string | undefined): vo
       }
     },
   )
+
+  server.tool(
+    'create_requirement',
+    '在某项目下创建需求(结构化需求=单一事实来源)。title 必填;status 默认 draft;structured 可含 user_stories/modules 等。建完可用 get_requirement_detail 查看、create_dev_plan 建进度树。权限:后端 requirement/create(product 职能)。',
+    {
+      title: z.string().describe('需求标题'),
+      description_md: z.string().optional().describe('需求描述(Markdown)'),
+      project_id: z.string().optional().describe('归属项目 ID,默认 default'),
+      status: z
+        .enum(['draft', 'clarifying', 'confirmed', 'deprecated'])
+        .optional()
+        .describe('需求状态,默认 draft'),
+      structured: z
+        .any()
+        .optional()
+        .describe('结构化需求:{user_stories,modules:[{name,description,acceptance_criteria,ui_states,related_assets}],interaction_flow,ambiguous_points}'),
+      doc_links: z
+        .array(z.object({ type: z.string().optional(), title: z.string().optional(), path: z.string() }))
+        .optional()
+        .describe('关联知识库文档(设计/规范/效果参考)'),
+    },
+    async ({ title, description_md, project_id, status, structured, doc_links }) => {
+      try {
+        const res = await backendRequest<unknown>(`/requirements`, apiKey, {
+          method: 'POST',
+          body: JSON.stringify({
+            title,
+            descriptionMd: description_md,
+            projectId: project_id ?? 'default',
+            status,
+            structured,
+            docLinks: doc_links,
+          }),
+        })
+        return { content: [{ type: 'text' as const, text: JSON.stringify(res, null, 2) }] }
+      } catch (e) {
+        return toolError(e)
+      }
+    },
+  )
 }
 
 function summarizeArchNode(n: Record<string, any>) {
