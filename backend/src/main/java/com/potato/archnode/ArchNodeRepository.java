@@ -14,4 +14,6 @@ public interface ArchNodeRepository extends MongoRepository<ArchNode, String> {
     List<ArchNode> findByProjectIdAndPathStartingWith(String projectId, String prefix);
 
     List<ArchNode> findByProjectIdAndRepoId(String projectId, String repoId);
+
+    List<ArchNode> findByProjectIdAndParentId(String projectId, String parentId);
 }

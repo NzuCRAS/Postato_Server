@@ -386,6 +386,10 @@ export function registerTools(server: McpServer, apiKey: string | undefined): vo
             tags: z.array(z.string()).optional().describe('跨切面维度,如 安全'),
             related_docs: z.array(z.string()).optional().describe('知识库 wiki path'),
             related_code: z.array(z.string()).optional().describe('代码 glob,如 backend/.../auth/**'),
+            impl_status: z
+              .enum(['planned', 'in_progress', 'done'])
+              .optional()
+              .describe('实现状态(仅叶子节点用;非叶子由后端按子节点自动聚合,手动传了也会被覆盖):planned 规划中 / in_progress 实现中 / done 已完成,缺省 planned'),
           }),
         )
         .describe('【单层】兄弟节点(无 children;要建下一层请确认后再调一次本工具)'),

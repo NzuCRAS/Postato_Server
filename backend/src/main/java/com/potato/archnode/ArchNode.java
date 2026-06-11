@@ -43,6 +43,10 @@ public class ArchNode {
     private String source = "manual";   // manual | sync(.project.yaml)
     private String repoId;               // sync 来源仓库
     private String status = "active";    // active | archived
+
+    @JsonProperty("impl_status")
+    private String implStatus = "planned";   // planned 规划中 | in_progress 实现中 | done 已完成(叶子手动标,非叶子由后端聚合)
+
     private int order;
 
     private Instant createdAt;

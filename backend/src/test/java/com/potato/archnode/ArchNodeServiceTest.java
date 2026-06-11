@@ -45,6 +45,12 @@ class ArchNodeServiceTest {
         return n;
     }
 
+    private ArchNode statusNode(String id, String path, String impl) {
+        ArchNode n = node(id, path, "L1", null);
+        n.setImplStatus(impl);
+        return n;
+    }
+
     @Test
     void create_computes_path_under_parent() {
         when(repo.findById("a")).thenReturn(Optional.of(node("a", "/用户域", "L1", null)));
@@ -136,8 +142,8 @@ class ArchNodeServiceTest {
             saved.add(a);
             return a;
         });
-        ArchNodeDtos.TreeNode child = new ArchNodeDtos.TreeNode("用户域", null, "domain", null, null, null, null, null);
-        ArchNodeDtos.TreeNode root = new ArchNodeDtos.TreeNode("Potato 平台", null, "system", null, null, null, null, List.of(child));
+        ArchNodeDtos.TreeNode child = new ArchNodeDtos.TreeNode("用户域", null, "domain", null, null, null, null, null, null);
+        ArchNodeDtos.TreeNode root = new ArchNodeDtos.TreeNode("Potato 平台", null, "system", null, null, null, null, null, List.of(child));
         var res = service.upsertTree("p", null, List.of(root));
         assertThat(res.get("created")).isEqualTo(2);
         assertThat(res.get("updated")).isEqualTo(0);
@@ -159,12 +165,62 @@ class ArchNodeServiceTest {
             if (a.getId() == null) a.setId("gen" + a.getPath());
             return a;
         });
-        ArchNodeDtos.TreeNode child = new ArchNodeDtos.TreeNode("需求域", null, "domain", null, null, null, null, null);
-        ArchNodeDtos.TreeNode root = new ArchNodeDtos.TreeNode("Potato 平台", null, "system", null, null, null, null, List.of(child));
+        ArchNodeDtos.TreeNode child = new ArchNodeDtos.TreeNode("需求域", null, "domain", null, null, null, null, null, null);
+        ArchNodeDtos.TreeNode root = new ArchNodeDtos.TreeNode("Potato 平台", null, "system", null, null, null, null, null, List.of(child));
         var res = service.upsertTree("p", null, List.of(root));
         assertThat(res.get("created")).isEqualTo(1); // 仅子节点新建
         assertThat(res.get("updated")).isEqualTo(1); // 根更新
         assertThat(existingRoot.getStatus()).isEqualTo("active");
         assertThat(existingRoot.getSource()).isEqualTo("manual"); // 保留原 source
+    }
+
+    @Test
+    void upsertTree_aggregates_parent_from_children() {
+        ArchNode sys = node("sys", "/sys", "L0", null);
+        sys.setImplStatus("planned");
+        sys.setCreatedAt(Instant.now());
+        when(repo.findByProjectIdAndPath("p", "/sys")).thenReturn(Optional.of(sys));
+        when(repo.findByProjectIdAndPath("p", "/sys/A")).thenReturn(Optional.empty());
+        when(repo.findByProjectIdAndPath("p", "/sys/B")).thenReturn(Optional.empty());
+        when(repo.save(any())).thenAnswer(i -> {
+            ArchNode a = i.getArgument(0);
+            if (a.getId() == null) a.setId("gen" + a.getPath());
+            return a;
+        });
+        when(repo.findByProjectIdAndParentId("p", "sys"))
+                .thenReturn(List.of(statusNode("a", "/sys/A", "done"), statusNode("b", "/sys/B", "planned")));
+
+        ArchNodeDtos.TreeNode a = new ArchNodeDtos.TreeNode("A", "L1", "domain", null, null, null, null, "done", null);
+        ArchNodeDtos.TreeNode b = new ArchNodeDtos.TreeNode("B", "L1", "domain", null, null, null, null, "planned", null);
+        service.upsertTree("p", "/sys", List.of(a, b));
+
+        assertThat(sys.getImplStatus()).isEqualTo("in_progress"); // done + planned 混合 → in_progress
+    }
+
+    @Test
+    void impl_status_propagates_chained_to_root() {
+        ArchNode x = node("x", "/x", "L0", null);
+        x.setImplStatus("planned");
+        x.setCreatedAt(Instant.now());
+        ArchNode y = node("y", "/x/y", "L1", null);
+        y.setImplStatus("planned");
+        y.setParentId("x");
+        y.setCreatedAt(Instant.now());
+        when(repo.findByProjectIdAndPath("p", "/x/y")).thenReturn(Optional.of(y));
+        when(repo.findByProjectIdAndPath("p", "/x/y/z")).thenReturn(Optional.empty());
+        when(repo.save(any())).thenAnswer(i -> {
+            ArchNode n = i.getArgument(0);
+            if (n.getId() == null) n.setId("gen" + n.getPath());
+            return n;
+        });
+        when(repo.findById("x")).thenReturn(Optional.of(x));
+        when(repo.findByProjectIdAndParentId("p", "y")).thenReturn(List.of(statusNode("z", "/x/y/z", "done")));
+        when(repo.findByProjectIdAndParentId("p", "x")).thenReturn(List.of(y));
+
+        ArchNodeDtos.TreeNode z = new ArchNodeDtos.TreeNode("z", "L2", "context", null, null, null, null, "done", null);
+        service.upsertTree("p", "/x/y", List.of(z));
+
+        assertThat(y.getImplStatus()).isEqualTo("done");   // 子 z done → y done
+        assertThat(x.getImplStatus()).isEqualTo("done");   // 链式:y done → x done
     }
 }

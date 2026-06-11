@@ -68,6 +68,7 @@ public final class ArchNodeDtos {
             List<String> tags,
             @JsonProperty("related_docs") List<String> relatedDocs,
             @JsonProperty("related_code") List<String> relatedCode,
+            @JsonProperty("impl_status") String implStatus,   // 叶子:planned|in_progress|done(缺省 planned);非叶子由后端聚合
             List<TreeNode> children) {
     }
 }

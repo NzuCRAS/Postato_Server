@@ -210,6 +210,7 @@ public class ArchNodeService {
                 upsertRecursive(projectId, parent, tn, paths, counts);
             }
         }
+        if (parent != null) propagateUp(parent);   // 父及祖先按新增/变更的子节点链式重算 impl_status
         Map<String, Object> res = new HashMap<>();
         res.put("created", counts[0]);
         res.put("updated", counts[1]);
@@ -235,8 +236,10 @@ public class ArchNodeService {
             n.setPath(path);
             n.setSource("manual");
             n.setCreatedAt(now);
+            n.setImplStatus(tn.implStatus() != null && !tn.implStatus().isBlank() ? tn.implStatus() : "planned");
             counts[0]++;
         } else {
+            if (tn.implStatus() != null && !tn.implStatus().isBlank()) n.setImplStatus(tn.implStatus());
             counts[1]++;
         }
         n.setParentId(parentId);
@@ -252,10 +255,11 @@ public class ArchNodeService {
         ArchNode saved = repository.save(n);
         paths.add(path);
 
-        if (tn.children() != null) {
+        if (tn.children() != null && !tn.children().isEmpty()) {
             for (ArchNodeDtos.TreeNode child : tn.children()) {
                 upsertRecursive(projectId, saved, child, paths, counts);
             }
+            recompute(saved);   // 现在是非叶子,按子节点聚合 impl_status
         }
     }
 
@@ -263,6 +267,45 @@ public class ArchNodeService {
     private String autoLayer(String parentLayer) {
         if (parentLayer == null) return "L0";
         return nextLayer(parentLayer);
+    }
+
+    /** 重算非叶子节点的 impl_status(基于活跃直接子);叶子(无活跃子)不变。返回是否变化。 */
+    private boolean recompute(ArchNode node) {
+        List<ArchNode> kids = activeChildren(node.getProjectId(), node.getId());
+        if (kids.isEmpty()) return false;   // 叶子:状态由标注决定,不聚合
+        boolean allDone = true, allPlanned = true;
+        for (ArchNode k : kids) {
+            if (!"done".equals(k.getImplStatus())) allDone = false;
+            if (!"planned".equals(k.getImplStatus())) allPlanned = false;
+        }
+        String agg = allDone ? "done" : (allPlanned ? "planned" : "in_progress");
+        if (!agg.equals(node.getImplStatus())) {
+            node.setImplStatus(agg);
+            node.setUpdatedAt(Instant.now());
+            repository.save(node);
+            return true;
+        }
+        return false;
+    }
+
+    private List<ArchNode> activeChildren(String projectId, String parentId) {
+        List<ArchNode> all = repository.findByProjectIdAndParentId(projectId, parentId);
+        List<ArchNode> active = new ArrayList<>();
+        if (all != null) {
+            for (ArchNode k : all) if (!"archived".equals(k.getStatus())) active.add(k);
+        }
+        return active;
+    }
+
+    /** 从 start 自身开始重算 impl_status 并逐级向上;某级状态未变即停(祖先不受影响)。 */
+    private void propagateUp(ArchNode start) {
+        ArchNode cur = start;
+        while (cur != null) {
+            boolean changed = recompute(cur);
+            if (!changed) break;
+            String pid = cur.getParentId();
+            cur = (pid != null) ? repository.findById(pid).orElse(null) : null;
+        }
     }
 
     private String nextLayer(String parentLayer) {
