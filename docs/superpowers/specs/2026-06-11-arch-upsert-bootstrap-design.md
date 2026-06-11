@@ -29,5 +29,5 @@
 
 ## 已知约束 / 后续
 - 新增 MCP 工具名需**重连 MCP** 才在当前会话可见(工具列表启动时固定);故 node_3 首次录入经 REST 端点(同一能力)。
-- MCP 暂无 `create_requirement`(建需求经 REST `POST /requirements`);可后补。
+- MCP `create_requirement` 已补(commit `5e08b56`,工具 13→14):建需求也可纯经 MCP(包装 `POST /requirements`,权限沿用后端 `requirement/create`=product)。
 - 节点 rename 未联动 path(path 为稳定标识);`.project.yaml` CI 自动推送、OSS 存储仍为既有 backlog。
