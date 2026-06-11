@@ -365,28 +365,30 @@ export function registerTools(server: McpServer, apiKey: string | undefined): vo
   )
 
   server.tool(
-    'upsert_architecture',
-    '写入/更新项目结构树的一棵子树(管理树 L0–L2 或任意层):递归 upsert,parent_path 为空挂到根,layer 显式优先否则按父层自动 +1(根=L0),按 path 幂等(可重复推送)。source=manual。与 sync_project_modules(L3+ 工程树、按 repo reconcile、消失归档)互补——本工具用于人/AI 维护业务域骨架(系统/领域/上下文/模块)。',
+    'upsert_arch_layer',
+    '逐层共建项目结构树:在 parent_path 下写入/更新【一层】子节点(不支持嵌套 children)。parent_path 为空=建 L0 根;按 path 幂等(同层已存在则更新)。务必配合『逐层共建协议』(先 search_knowledge 取 /agent/arch-coauthoring):每层先与用户澄清、确认后再写本层,勿跳层、勿一次性灌整树。层级语义:L0系统→L1领域→L2限界上下文→L3业务模块;L3=业务模块,Service/类/页面等实现单元属 L4、交 sync_project_modules。',
     {
       project_id: z.string().describe('项目 ID,如 default'),
       parent_path: z
         .string()
         .optional()
-        .describe('挂载点物化路径,如 /Potato 平台/用户域;留空=挂到根(建 L0)'),
+        .describe('挂载点物化路径,如 /Potato 平台/用户域;留空=建 L0 根'),
       nodes: z
         .array(
           z.object({
             title: z.string(),
             layer: z.string().optional().describe('L0|L1|L2|L3|L4;缺省按父层 +1(根=L0)'),
-            type: z.string().optional().describe('system|domain|context|module|component...'),
-            description: z.string().optional(),
-            tags: z.array(z.string()).optional(),
+            type: z.string().optional().describe('system|domain|context|module'),
+            description: z
+              .string()
+              .optional()
+              .describe('职责(负责什么)+ 边界(不负责什么/与同层兄弟的区别);勿同义反复'),
+            tags: z.array(z.string()).optional().describe('跨切面维度,如 安全'),
             related_docs: z.array(z.string()).optional().describe('知识库 wiki path'),
             related_code: z.array(z.string()).optional().describe('代码 glob,如 backend/.../auth/**'),
-            children: z.array(z.any()).optional(),
           }),
         )
-        .describe('一棵或多棵子树(children 可继续嵌套同样结构)'),
+        .describe('【单层】兄弟节点(无 children;要建下一层请确认后再调一次本工具)'),
     },
     async ({ project_id, parent_path, nodes }) => {
       try {
