@@ -261,12 +261,15 @@ public class DevPlanService {
         if (!"done".equals(node.getStatus())) {
             return warnings;
         }
-        if (!hasAnyArtifact(node)) {
-            warnings.add("节点标记为完成,但没有任何 commit 或产物(PR)。");
-        }
-        boolean anyVerifyPass = node.getVerifications().stream().anyMatch(v -> "pass".equals(v.getResult()));
-        if (!anyVerifyPass) {
-            warnings.add("节点标记为完成,但没有任何通过的验证记录(verification)。");
+        // 叶子节点才要求自身有 commit/验证;聚合节点(有活跃子节点)的产物与验证在子节点上,豁免这两类
+        if (node.getChildren().isEmpty()) {
+            if (!hasAnyArtifact(node)) {
+                warnings.add("节点标记为完成,但没有任何 commit 或产物(PR)。");
+            }
+            boolean anyVerifyPass = node.getVerifications().stream().anyMatch(v -> "pass".equals(v.getResult()));
+            if (!anyVerifyPass) {
+                warnings.add("节点标记为完成,但没有任何通过的验证记录(verification)。");
+            }
         }
         boolean anyUnchecked = node.getAcceptanceCriteria().stream().anyMatch(a -> !a.isChecked());
         if (anyUnchecked) {

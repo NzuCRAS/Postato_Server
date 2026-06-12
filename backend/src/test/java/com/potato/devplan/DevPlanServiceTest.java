@@ -205,4 +205,19 @@ class DevPlanServiceTest {
         assertThatThrownBy(() -> service.updateNode("r1", "node_1", in, "ai"))
                 .isInstanceOf(ResponseStatusException.class).hasMessageContaining("验证类型");
     }
+
+    @Test
+    void aggregate_node_skips_artifact_and_verify_warnings() {
+        reqWithPlan();
+        service.addNodes("r1", "node_1", List.of(new NodeInput("子任务", null, null, null, null, null)));
+        DevPlan.AcceptanceItem item = new DevPlan.AcceptanceItem();
+        item.setText("必填校验");
+        item.setChecked(true);
+        UpdateNodeRequest in = new UpdateNodeRequest("done", null, null, null, null, null, List.of(item), null);
+        UpdateResult r = service.updateNode("r1", "node_1", in, "ai");
+        // node_1 现在有子节点 → 豁免「无产物/无验证」;但子未完成警告仍在
+        assertThat(r.warnings()).noneMatch(w -> w.contains("产物"));
+        assertThat(r.warnings()).noneMatch(w -> w.contains("验证"));
+        assertThat(r.warnings()).anyMatch(w -> w.contains("子节点"));
+    }
 }
