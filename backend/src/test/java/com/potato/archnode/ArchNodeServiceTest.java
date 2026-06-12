@@ -223,4 +223,66 @@ class ArchNodeServiceTest {
         assertThat(y.getImplStatus()).isEqualTo("done");   // 子 z done → y done
         assertThat(x.getImplStatus()).isEqualTo("done");   // 链式:y done → x done
     }
+
+    @Test
+    void relateAndMark_leaf_sets_impl_and_aggregates_parent() {
+        ArchNode parent = node("p1", "/ctx", "L1", null);
+        parent.setImplStatus("planned");                 // parentId null → 顶层
+        ArchNode leaf = node("leaf", "/ctx/mod", "L2", null);
+        leaf.setImplStatus("planned");
+        leaf.setParentId("p1");
+        when(repo.findByProjectIdAndPath("p", "/ctx/mod")).thenReturn(Optional.of(leaf));
+        when(repo.findByProjectIdAndParentId("p", "leaf")).thenReturn(List.of());     // 叶子无子
+        when(repo.findById("p1")).thenReturn(Optional.of(parent));
+        when(repo.findByProjectIdAndParentId("p", "p1")).thenReturn(List.of(leaf));   // 父的子=leaf
+        when(repo.save(any())).thenAnswer(i -> i.getArgument(0));
+
+        ArchNodeService.RelateResult r = service.relateAndMark("p", "/ctx/mod", "done", "req1");
+        assertThat(r.linked()).isTrue();
+        assertThat(r.warnings()).isEmpty();
+        assertThat(leaf.getImplStatus()).isEqualTo("done");
+        assertThat(leaf.getRelatedRequirements()).containsExactly("req1");
+        assertThat(parent.getImplStatus()).isEqualTo("done");   // 叶子 done → 父聚合 done
+    }
+
+    @Test
+    void relateAndMark_nonleaf_warns_and_keeps_status() {
+        ArchNode n = node("n", "/ctx", "L1", null);
+        n.setImplStatus("planned");
+        when(repo.findByProjectIdAndPath("p", "/ctx")).thenReturn(Optional.of(n));
+        when(repo.findByProjectIdAndParentId("p", "n")).thenReturn(List.of(node("c", "/ctx/sub", "L2", null)));
+        when(repo.save(any())).thenAnswer(i -> i.getArgument(0));
+
+        ArchNodeService.RelateResult r = service.relateAndMark("p", "/ctx", "done", "req1");
+        assertThat(r.linked()).isTrue();
+        assertThat(r.warnings()).anyMatch(w -> w.contains("子聚合"));
+        assertThat(n.getImplStatus()).isEqualTo("planned");        // 非叶子未被直接设
+        assertThat(n.getRelatedRequirements()).contains("req1");   // 但关联已建立
+    }
+
+    @Test
+    void relateAndMark_dedups_requirement_link() {
+        ArchNode n = node("n", "/ctx", "L1", null);
+        n.setRelatedRequirements(new ArrayList<>(List.of("req1")));
+        when(repo.findByProjectIdAndPath("p", "/ctx")).thenReturn(Optional.of(n));
+        when(repo.save(any())).thenAnswer(i -> i.getArgument(0));
+
+        ArchNodeService.RelateResult r = service.relateAndMark("p", "/ctx", null, "req1"); // 仅关联,已存在
+        assertThat(r.linked()).isTrue();
+        assertThat(n.getRelatedRequirements()).containsExactly("req1");   // 去重不重复
+    }
+
+    @Test
+    void relateAndMark_missing_node_warns_not_linked() {
+        when(repo.findByProjectIdAndPath("p", "/nope")).thenReturn(Optional.empty());
+        ArchNodeService.RelateResult r = service.relateAndMark("p", "/nope", "done", "req1");
+        assertThat(r.linked()).isFalse();
+        assertThat(r.warnings()).anyMatch(w -> w.contains("不存在"));
+    }
+
+    @Test
+    void relateAndMark_illegal_impl_status_rejected() {
+        assertThatThrownBy(() -> service.relateAndMark("p", "/ctx", "magic", "req1"))
+                .isInstanceOf(ResponseStatusException.class).hasMessageContaining("impl_status");
+    }
 }

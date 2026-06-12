@@ -27,3 +27,19 @@ record RequirementSummary(
         int version,
         Instant updatedAt) {
 }
+
+/** ⑩ 需求关联结构树节点请求体(回标用) */
+record ArchLinkRequest(java.util.List<ArchLink> links) {
+}
+
+/** 单条关联:arch 节点物化路径 + 可选回标的 impl_status */
+record ArchLink(
+        @com.fasterxml.jackson.annotation.JsonProperty("arch_path") String archPath,
+        @com.fasterxml.jackson.annotation.JsonProperty("impl_status") String implStatus) {
+}
+
+/** 关联结果:更新后的关联列表 + 软警告 */
+record RelateArchResponse(
+        @com.fasterxml.jackson.annotation.JsonProperty("related_arch_nodes") java.util.List<String> relatedArchNodes,
+        java.util.List<String> warnings) {
+}

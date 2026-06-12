@@ -20,11 +20,16 @@ import java.util.Set;
 @Service
 public class ArchNodeService {
 
+    private static final Set<String> VALID_IMPL = Set.of("planned", "in_progress", "done");
+
     private final ArchNodeRepository repository;
 
     public ArchNodeService(ArchNodeRepository repository) {
         this.repository = repository;
     }
+
+    /** 需求↔arch 关联结果:linked=节点是否存在并已关联;warnings=软提示。 */
+    public record RelateResult(boolean linked, List<String> warnings) {}
 
     /**
      * 列出项目的活跃结构节点。带 tag/layer 过滤时返回命中节点 + 其祖先链(便于前端组装"按标签的跨切面动态树")。
@@ -348,5 +353,51 @@ public class ArchNodeService {
         }
         repository.saveAll(toSave);
         return n;
+    }
+
+    /**
+     * ⑩ 需求↔结构树联动:把需求关联到 arch 节点(arch 侧 related_requirements 去重),并按需回标 impl_status。
+     * impl_status 非法 → 400;path 空/节点不存在 → 记 warning 跳过(linked=false);
+     * 叶子 → 直接设 impl_status + 对父 propagateUp(祖先链式聚合重算);
+     * 非叶子 → 状态由子聚合,不直接设,记一条 warning(linked=true,关联仍建立)。
+     */
+    public RelateResult relateAndMark(String projectId, String path, String implStatus, String reqId) {
+        List<String> warnings = new ArrayList<>();
+        if (implStatus != null && !implStatus.isBlank() && !VALID_IMPL.contains(implStatus)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "非法 impl_status: " + implStatus);
+        }
+        if (path == null || path.isBlank()) {
+            warnings.add("跳过空 arch_path");
+            return new RelateResult(false, warnings);
+        }
+        Optional<ArchNode> opt = repository.findByProjectIdAndPath(projectId, path);
+        if (opt.isEmpty()) {
+            warnings.add("结构树节点不存在,跳过: " + path);
+            return new RelateResult(false, warnings);
+        }
+        ArchNode n = opt.get();
+        if (reqId != null && !reqId.isBlank() && !n.getRelatedRequirements().contains(reqId)) {
+            n.getRelatedRequirements().add(reqId);
+        }
+        Instant now = Instant.now();
+        if (implStatus != null && !implStatus.isBlank()) {
+            if (activeChildren(projectId, n.getId()).isEmpty()) {
+                n.setImplStatus(implStatus);          // 叶子:直接标注
+                n.setUpdatedAt(now);
+                repository.save(n);
+                if (n.getParentId() != null) {        // 祖先链式聚合重算
+                    ArchNode parent = repository.findById(n.getParentId()).orElse(null);
+                    if (parent != null) propagateUp(parent);
+                }
+            } else {
+                warnings.add("节点有子节点,impl_status 由子聚合,未直接设: " + path);
+                n.setUpdatedAt(now);
+                repository.save(n);
+            }
+        } else {
+            n.setUpdatedAt(now);
+            repository.save(n);
+        }
+        return new RelateResult(true, warnings);
     }
 }

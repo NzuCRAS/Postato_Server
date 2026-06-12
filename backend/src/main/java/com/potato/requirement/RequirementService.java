@@ -5,6 +5,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 
@@ -15,9 +16,12 @@ public class RequirementService {
     private static final String DEFAULT_PROJECT = "default";
 
     private final RequirementRepository repository;
+    private final com.potato.archnode.ArchNodeService archNodeService;
 
-    public RequirementService(RequirementRepository repository) {
+    public RequirementService(RequirementRepository repository,
+                              com.potato.archnode.ArchNodeService archNodeService) {
         this.repository = repository;
+        this.archNodeService = archNodeService;
     }
 
     public List<Requirement> list(String status, String projectId) {
@@ -73,6 +77,30 @@ public class RequirementService {
         r.setStatus(normalizeStatus(status, null));
         r.setUpdatedAt(Instant.now());
         return repository.save(r);
+    }
+
+    /**
+     * ⑩ 需求完成回标:为需求建立到结构树节点的双向关联,并按需回标各叶子节点 impl_status。
+     * 委托 ArchNodeService 处理 arch 侧(关联去重 + 叶子回标 + 祖先聚合);需求侧记录关联路径(去重,仅节点存在时)。
+     * 返回更新后的关联列表 + 汇总软警告(不阻断)。
+     */
+    public RelateArchResponse relateArch(String reqId, List<ArchLink> links) {
+        Requirement r = get(reqId);
+        if (r.getRelatedArchNodes() == null) r.setRelatedArchNodes(new ArrayList<>());
+        List<String> warnings = new ArrayList<>();
+        if (links != null) {
+            for (ArchLink link : links) {
+                com.potato.archnode.ArchNodeService.RelateResult rr =
+                        archNodeService.relateAndMark(r.getProjectId(), link.archPath(), link.implStatus(), reqId);
+                if (rr.linked() && link.archPath() != null && !r.getRelatedArchNodes().contains(link.archPath())) {
+                    r.getRelatedArchNodes().add(link.archPath());
+                }
+                warnings.addAll(rr.warnings());
+            }
+        }
+        r.setUpdatedAt(Instant.now());
+        repository.save(r);
+        return new RelateArchResponse(r.getRelatedArchNodes(), warnings);
     }
 
     private String normalizeStatus(String status, String fallback) {

@@ -33,6 +33,10 @@ public class Requirement {
     /** 关联到知识库的设计/规范/效果参考文档 */
     private java.util.List<com.potato.common.DocLink> docLinks = new java.util.ArrayList<>();
 
+    /** 该需求落地到的结构树节点(物化路径),与 ArchNode.related_requirements 双向(⑩ 需求↔结构树联动) */
+    @com.fasterxml.jackson.annotation.JsonProperty("related_arch_nodes")
+    private java.util.List<String> relatedArchNodes = new java.util.ArrayList<>();
+
     private String createdBy;
     private Instant createdAt;
     private Instant updatedAt;

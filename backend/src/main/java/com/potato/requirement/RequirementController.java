@@ -68,4 +68,13 @@ public class RequirementController {
         permissionService.check(user, "requirement", "update_status");
         return service.updateStatus(id, req.status());
     }
+
+    /** ⑩ 需求完成回标:建立需求↔结构树双向关联 + 回标叶子 impl_status。权限同 dev_plan/update(AI 开发动作)。 */
+    @PostMapping("/{id}/arch-links")
+    public RelateArchResponse relateArch(@AuthenticationPrincipal User user,
+                                         @PathVariable String id,
+                                         @RequestBody ArchLinkRequest req) {
+        permissionService.check(user, "dev_plan", "update");
+        return service.relateArch(id, req.links());
+    }
 }
