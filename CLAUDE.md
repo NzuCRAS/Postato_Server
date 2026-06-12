@@ -8,7 +8,7 @@
 
 ## 标准流程(接到开发任务后)
 
-1. **读需求** —— `get_requirement_detail(requirement_id)`,理解用户故事、模块、验收标准、已有进度树与**未解决的纠偏(open_corrections)**。
+1. **读需求 + 读规范** —— `get_requirement_detail(requirement_id)`,理解用户故事、模块、验收标准、已有进度树与**未解决的纠偏(open_corrections)**;**动手前必读**返回里的 `project_doc_links`(项目级代码/视觉/契约规范)与需求级 `doc_links`,按既有规范写,别等写完才发现违规。
 2. **查知识** —— `search_knowledge(query)` 找相关代码规范、最佳实践、**以往沉淀的可复用经验**。先复用,不要重造轮子。
 3. **(复杂节点)文档先行** —— 实现前先 `write_tech_proposal(requirement_id, node_id, title, content, mark_in_progress=true)` 产出技术方案(含:引用的知识库文档、实现方案、问题预警),它会建一篇技术方案 wiki 页并关联到节点。
 4. **建/拆树** —— 无计划时 `create_dev_plan`(按软件模块分解,带 module_ref / acceptance_criteria / related_docs / repo);开发中要拆子任务时 `add_dev_plan_nodes(parent_node_id, nodes)`。

@@ -11,17 +11,30 @@ export function registerTools(server: McpServer, apiKey: string | undefined): vo
 
   server.tool(
     'get_requirement_detail',
-    '获取需求的结构化详情(用户故事、模块、验收条件)与开发进度树摘要。开发任务开始前必须先调用以理解目标。',
+    '获取需求的结构化详情(用户故事、模块、验收条件)、开发进度树摘要,以及**项目级规范文档**(project_doc_links:项目全局的代码/视觉/契约规范)。开发任务开始前必须先调用以理解目标并先读规范。',
     { requirement_id: z.string().describe('需求 ID') },
     async ({ requirement_id }) => {
       try {
         const r = await backendRequest<Record<string, any>>(`/requirements/${requirement_id}`, apiKey)
+        // ④ 开工规范前置:在需求级 doc_links 之外,额外附项目级 docLinks,
+        // 让 AI 一次调用即看到项目全局规范(代码/视觉/契约),不必再单独 get_project_detail。
+        // 项目级规范是辅助信息,取不到不应阻断需求详情 → 降级为空数组。
+        let projectDocLinks: unknown = []
+        if (r.projectId) {
+          try {
+            const p = await backendRequest<Record<string, any>>(`/projects/${r.projectId}`, apiKey)
+            projectDocLinks = p.docLinks ?? []
+          } catch {
+            projectDocLinks = []
+          }
+        }
         const summary = {
           id: r.id,
           title: r.title,
           status: r.status,
           project_id: r.projectId,
-          doc_links: r.docLinks,
+          project_doc_links: projectDocLinks, // 项目级规范(开工必读):代码/视觉/契约规范
+          doc_links: r.docLinks,              // 需求级关联文档(本需求专属的设计/效果参考)
           structured: r.structured,
           dev_plan: r.devPlan ? summarizePlan(r.devPlan) : null,
         }
