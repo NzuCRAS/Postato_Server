@@ -471,6 +471,38 @@ export function registerTools(server: McpServer, apiKey: string | undefined): vo
       }
     },
   )
+
+  server.tool(
+    'relate_requirement_arch',
+    '需求完成回标(闭环第⑨/⑩步):把需求关联到结构树业务模块节点(双向),并可按判断回标叶子节点的 impl_status。impl_status 省略=只建关联不改状态;回标应指向**叶子业务模块**(非叶子由子节点聚合,不会被直接设,会在 warnings 提示)。响应含 related_arch_nodes(更新后)与 warnings(软提示,不阻断)。',
+    {
+      requirement_id: z.string().describe('需求 ID'),
+      links: z
+        .array(
+          z.object({
+            arch_path: z
+              .string()
+              .describe('结构树节点物化路径(从 get_architecture/get_project_detail 取),如 /Potato 平台/研发过程域/进度树上下文'),
+            impl_status: z
+              .enum(['planned', 'in_progress', 'done'])
+              .optional()
+              .describe('回标的实现状态;省略=只建关联不改状态。仅对叶子节点生效,非叶子由子聚合'),
+          }),
+        )
+        .describe('要关联/回标的结构树节点列表'),
+    },
+    async ({ requirement_id, links }) => {
+      try {
+        const res = await backendRequest<unknown>(`/requirements/${requirement_id}/arch-links`, apiKey, {
+          method: 'POST',
+          body: JSON.stringify({ links }),
+        })
+        return { content: [{ type: 'text' as const, text: JSON.stringify(res, null, 2) }] }
+      } catch (e) {
+        return toolError(e)
+      }
+    },
+  )
 }
 
 function summarizeArchNode(n: Record<string, any>) {
