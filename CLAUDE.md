@@ -19,7 +19,9 @@
    - 回填 `update_dev_plan_node(node_id, status="done", commit={sha,url,message,files}, verifications=[...], acceptance_criteria=[...勾上已满足的...], log_detail)`。
    - **一个节点 ≈ 一个 commit**;后续修 bug 再记一条带 commit 的日志。
 6. **重视 warnings** —— `update_dev_plan_node` 响应里的 `warnings`(无产物/无通过验证/验收未勾/子节点未完成)**必须处理**:要么补产物/验证/勾验收,要么在 `log_detail` 说明为何可豁免。**严禁**无产物或无验证却谎报完成。
-7. **收尾沉淀** —— 把本次可复用的经验用 `write_knowledge(path, title, content, tags)` 写进知识库(选好路径如 `/vue/toast`、标签如 `toast`),下次相似场景可直接 `search_knowledge` 复用。临时性技术方案放 `/tech-proposals/…` 或打 `tmp` 标签,不污染知识库。
+7. **收尾沉淀(必做,非可选)** —— 节点/需求完成后**必须**回顾本轮并显式处理两件事(即使判断「无需沉淀」也要先判断再跳过,不可默认略过):
+   - **沉淀经验**:若有可复用经验(代码规范 / 踩坑 / 通用模式),用 `write_knowledge(path, title, content, tags)` 写进知识库(选好路径如 `/vue/toast`、标签如 `toast`),下次 `search_knowledge` 可复用;临时技术方案放 `/tech-proposals/…` 或打 `tmp` 标签,不污染知识库。
+   - **回标结构树**:需求开发完成时,用 `relate_requirement_arch(requirement_id, links)` 把需求关联并回标其落地的结构树**叶子**业务模块 `impl_status`(闭环第⑨/⑩步),让蓝图反映真实进度。
 
 ## 项目结构树共建(arch tree)
 
@@ -58,10 +60,10 @@
 
 > 新增/修改 MCP 工具后,需重连 MCP(重开会话或重载)才能看到新工具名。
 
-## 可用 MCP 工具(14)
+## 可用 MCP 工具(15)
 
-- **需求/知识**:`get_requirement_detail` · `create_requirement` · `search_knowledge` · `write_knowledge` · `write_tech_proposal`
+- **需求/知识**:`get_requirement_detail`(附项目级 `project_doc_links`) · `create_requirement` · `search_knowledge` · `write_knowledge` · `write_tech_proposal`
 - **进度树**:`create_dev_plan` · `update_dev_plan_node` · `add_dev_plan_nodes` · `reset_dev_plan` · `set_dev_plan_repo`
-- **项目/结构树**:`get_project_detail` · `get_architecture` · `upsert_arch_layer`(逐层共建,见 `/agent/arch-coauthoring`) · `sync_project_modules`
+- **项目/结构树**:`get_project_detail` · `get_architecture` · `upsert_arch_layer`(逐层共建,见 `/agent/arch-coauthoring`) · `sync_project_modules` · `relate_requirement_arch`(需求完成回标结构树 impl_status)
 
 > 详细设计见 `docs/平台开发说明.md` 与 `docs/superpowers/specs/`。本契约也沉淀在知识库 `/agent/herness-contract`。
