@@ -144,6 +144,8 @@ export interface Requirement {
   structured: Structured
   devPlan?: DevPlan
   docLinks?: ProjectDocLink[]
+  /** ⑩ 该需求落地到的结构树节点物化路径(与 ArchNode.related_requirements 双向) */
+  related_arch_nodes?: string[]
   createdBy?: string
   createdAt: string
   updatedAt: string

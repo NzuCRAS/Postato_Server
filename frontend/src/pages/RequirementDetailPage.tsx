@@ -11,7 +11,7 @@ import NodeDetailDrawer from '../components/NodeDetailDrawer'
 import { updateDevPlanNode } from '../api/devplan'
 import type { AcceptanceItem, DevPlanNode } from '../types'
 
-const { Title, Paragraph, Text } = Typography
+const { Title, Paragraph, Text, Link } = Typography
 
 export default function RequirementDetailPage() {
   const { id = '' } = useParams()
@@ -162,6 +162,20 @@ export default function RequirementDetailPage() {
                   </Card>
                 )}
                 <StructuredView structured={data.structured} />
+                {(data.related_arch_nodes?.length ?? 0) > 0 && (
+                  <Card size="small" title="关联结构树节点">
+                    <Space direction="vertical" size={4} style={{ width: '100%' }}>
+                      <Text type="secondary" style={{ fontSize: 12 }}>
+                        本需求落地到的业务模块(开发完成时回标 impl_status);点击查看项目结构树
+                      </Text>
+                      {(data.related_arch_nodes ?? []).map((p) => (
+                        <Link key={p} href={`/projects/${data.projectId}`} target="_blank">
+                          {p}
+                        </Link>
+                      ))}
+                    </Space>
+                  </Card>
+                )}
               </Space>
             ),
           },
