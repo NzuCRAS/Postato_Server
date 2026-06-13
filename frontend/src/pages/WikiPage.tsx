@@ -1,10 +1,10 @@
 // 视图层:知识库页(左目录树 + 搜索 + 分类筛选 + 右文档查看/资产/晋升)
 import { useState } from 'react'
-import { Button, Card, Empty, Input, Modal, Select, Space, Tag, Typography, message } from 'antd'
+import { Breadcrumb, Button, Card, Empty, Input, Modal, Select, Space, Tag, Typography, message } from 'antd'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext'
 import { useWiki } from '../features/useWiki'
-import { updateWiki } from '../api/wiki'
+import { moveDir, updateWiki } from '../api/wiki'
 import WikiTree from '../components/WikiTree'
 import MarkdownView from '../components/MarkdownView'
 
@@ -27,6 +27,8 @@ export default function WikiPage() {
   const [promoting, setPromoting] = useState(false)
   const [promoteCat, setPromoteCat] = useState('experience')
   const [promotePath, setPromotePath] = useState('')
+  const [moveTarget, setMoveTarget] = useState<{ isDir: boolean; path: string; id?: string; name: string } | null>(null)
+  const [movePath, setMovePath] = useState('')
 
   const isTmp = selected?.tags?.includes('tmp') ?? false
 
@@ -53,6 +55,31 @@ export default function WikiPage() {
     }
   }
 
+  const openMove = (node: { isDir: boolean; path: string; id?: string; name: string }) => {
+    setMoveTarget(node)
+    setMovePath(node.path)
+  }
+
+  const doMove = async () => {
+    if (!moveTarget || !movePath.trim()) return
+    try {
+      if (moveTarget.isDir) {
+        await moveDir(moveTarget.path, movePath.trim())
+      } else if (moveTarget.id) {
+        await updateWiki(moveTarget.id, { path: movePath.trim() })
+      }
+      message.success('已移动')
+      setMoveTarget(null)
+      reload()
+    } catch (e) {
+      message.error(e instanceof Error ? e.message : '移动失败')
+    }
+  }
+
+  const newInDir = (dirPath: string) => {
+    navigate(`/wiki/new?path=${encodeURIComponent(dirPath + '/')}`)
+  }
+
   return (
     <div style={{ display: 'flex', gap: 16, height: 'calc(100vh - 140px)' }}>
       <Card
@@ -68,7 +95,7 @@ export default function WikiPage() {
           options={CATEGORY_OPTIONS}
           style={{ width: '100%', marginBottom: 12 }}
         />
-        <WikiTree pages={pages} selectedId={selectedId} onSelect={setSelectedId} />
+        <WikiTree pages={pages} selectedId={selectedId} onSelect={setSelectedId} canEdit={canEdit} onMoveNode={openMove} onNewInDir={newInDir} />
       </Card>
 
       <Card style={{ flex: 1, overflow: 'auto' }}>
@@ -81,8 +108,11 @@ export default function WikiPage() {
                 {canEdit && <Button onClick={() => navigate(`/wiki/${selected.id}/edit`)}>编辑</Button>}
               </Space>
             </div>
-            <Space style={{ margin: '8px 0' }} wrap>
-              <Text type="secondary" code>{selected.path}</Text>
+            <Breadcrumb
+              style={{ margin: '8px 0' }}
+              items={selected.path.split('/').filter(Boolean).map((seg) => ({ title: seg }))}
+            />
+            <Space style={{ marginBottom: 8 }} wrap>
               {selected.category && <Tag color="blue">{selected.category}</Tag>}
               {selected.tags.map((t) => <Tag key={t}>{t}</Tag>)}
             </Space>
@@ -121,6 +151,21 @@ export default function WikiPage() {
             onChange={(e) => setPromotePath(e.target.value)}
           />
         </Space>
+      </Modal>
+
+      <Modal
+        title={moveTarget?.isDir ? '重命名 / 移动目录' : '重命名 / 移动文档'}
+        open={!!moveTarget}
+        onOk={doMove}
+        onCancel={() => setMoveTarget(null)}
+        okText="确定"
+      >
+        <p>
+          {moveTarget?.isDir
+            ? '输入目录的新路径,其下所有文档会一起移动:'
+            : '输入文档的新路径(改末段=重命名,改父目录=移动):'}
+        </p>
+        <Input value={movePath} onChange={(e) => setMovePath(e.target.value)} placeholder="如 /development/code-style/react" />
       </Modal>
     </div>
   )

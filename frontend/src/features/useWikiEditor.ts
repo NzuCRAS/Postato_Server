@@ -5,8 +5,8 @@ import type { WikiAsset, WikiPageItem } from '../types'
 
 const EMPTY: WikiInput = { title: '', path: '', parentPath: undefined, content: '', category: 'doc', tags: [] }
 
-export function useWikiEditor(id?: string) {
-  const [form, setForm] = useState<WikiInput | null>(id ? null : { ...EMPTY })
+export function useWikiEditor(id?: string, initialPath?: string) {
+  const [form, setForm] = useState<WikiInput | null>(id ? null : { ...EMPTY, path: initialPath ?? '' })
   const [assets, setAssets] = useState<WikiAsset[]>([])
   const [loading, setLoading] = useState(!!id)
   const [saving, setSaving] = useState(false)

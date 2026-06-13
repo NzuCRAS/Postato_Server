@@ -11,3 +11,7 @@ record WikiPageRequest(
         String category,
         List<String> tags) {
 }
+
+/** 整目录移动/重命名请求:把 fromPrefix 子树整体迁到 toPrefix。 */
+record MoveDirRequest(String fromPrefix, String toPrefix) {
+}

@@ -63,6 +63,13 @@ public class WikiController {
         return service.update(id, req.title(), req.path(), req.content(), req.category(), req.tags(), req.parentPath(), user.getId());
     }
 
+    /** 整目录移动/重命名:把 fromPrefix 目录及其下所有文档的路径前缀级联替换为 toPrefix。 */
+    @PostMapping("/move-dir")
+    public List<WikiPage> moveDir(@AuthenticationPrincipal User user, @RequestBody MoveDirRequest req) {
+        permissionService.check(user, "wiki", "edit");
+        return service.moveDir(req.fromPrefix(), req.toPrefix(), user.getId());
+    }
+
     @GetMapping("/search")
     public List<WikiPage> search(@AuthenticationPrincipal User user,
                                  @RequestParam(required = false) String q,

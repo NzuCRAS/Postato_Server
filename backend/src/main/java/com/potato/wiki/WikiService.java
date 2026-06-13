@@ -35,14 +35,15 @@ public class WikiService {
         if (title == null || title.isBlank() || path == null || path.isBlank()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "标题和路径必填");
         }
-        repository.findByPath(path).ifPresent(p -> {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "路径已存在: " + path);
+        String normalized = normalizePath(path);
+        repository.findByPath(normalized).ifPresent(p -> {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "路径已存在: " + normalized);
         });
         WikiPage page = new WikiPage();
         page.setProjectId(DEFAULT_PROJECT);
         page.setTitle(title);
-        page.setPath(path);
-        page.setParentPath(parentPath);
+        page.setPath(normalized);
+        page.setParentPath(parentOf(normalized));
         page.setContent(content);
         page.setCategory(normalizeCategory(category));
         if (tags != null) page.setTags(tags);
@@ -59,16 +60,19 @@ public class WikiService {
     public WikiPage update(String id, String title, String path, String content, String category, List<String> tags, String parentPath, String userId) {
         WikiPage page = get(id);
         if (title != null) page.setTitle(title);
-        if (path != null && !path.isBlank() && !path.equals(page.getPath())) {
-            repository.findByPath(path).ifPresent(p -> {
-                throw new ResponseStatusException(HttpStatus.CONFLICT, "路径已存在: " + path);
-            });
-            page.setPath(path);
+        if (path != null && !path.isBlank()) {
+            String normalized = normalizePath(path);
+            if (!normalized.equals(page.getPath())) {
+                repository.findByPath(normalized).ifPresent(p -> {
+                    throw new ResponseStatusException(HttpStatus.CONFLICT, "路径已存在: " + normalized);
+                });
+                page.setPath(normalized);
+                page.setParentPath(parentOf(normalized));
+            }
         }
         if (content != null) page.setContent(content);
         if (category != null) page.setCategory(validateCategory(category));
         if (tags != null) page.setTags(tags);
-        if (parentPath != null) page.setParentPath(parentPath);
         page.setVersion(page.getVersion() + 1);
         page.setUpdatedBy(userId);
         page.setUpdatedAt(Instant.now());
@@ -80,9 +84,70 @@ public class WikiService {
         if (path == null || path.isBlank() || title == null || title.isBlank()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "标题和路径必填");
         }
-        return repository.findByPath(path)
-                .map(existing -> update(existing.getId(), title, path, content, category, tags, parentPath, userId))
-                .orElseGet(() -> create(title, path, parentPath, content, category, tags, userId));
+        String normalized = normalizePath(path);
+        return repository.findByPath(normalized)
+                .map(existing -> update(existing.getId(), title, normalized, content, category, tags, parentPath, userId))
+                .orElseGet(() -> create(title, normalized, parentPath, content, category, tags, userId));
+    }
+
+    /**
+     * 把 fromPrefix 目录(及其下所有文档)整体移动/重命名到 toPrefix —— 物化路径前缀级联替换,像 mv 一个文件夹。
+     * 目标路径与本次移动范围外的文档冲突则 409;不能移动到自身或其子目录下。
+     */
+    public List<WikiPage> moveDir(String fromPrefix, String toPrefix, String userId) {
+        String from = normalizePath(fromPrefix);
+        String to = normalizePath(toPrefix);
+        if ("/".equals(from) || "/".equals(to)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "源/目标目录不能为空");
+        }
+        if (to.equals(from) || to.startsWith(from + "/")) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "不能移动到自身或其子目录下");
+        }
+        List<WikiPage> all = repository.findAllByOrderByPathAsc();
+        List<WikiPage> affected = new ArrayList<>();
+        for (WikiPage p : all) {
+            String pp = p.getPath();
+            if (pp != null && (pp.equals(from) || pp.startsWith(from + "/"))) affected.add(p);
+        }
+        if (affected.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "目录不存在或为空: " + from);
+        }
+        Set<String> movingPaths = new java.util.HashSet<>();
+        for (WikiPage p : affected) movingPaths.add(p.getPath());
+        for (WikiPage p : affected) {
+            String newPath = to + p.getPath().substring(from.length());
+            for (WikiPage other : all) {
+                if (!movingPaths.contains(other.getPath()) && newPath.equals(other.getPath())) {
+                    throw new ResponseStatusException(HttpStatus.CONFLICT, "目标路径已存在: " + newPath);
+                }
+            }
+        }
+        Instant now = Instant.now();
+        for (WikiPage p : affected) {
+            String newPath = to + p.getPath().substring(from.length());
+            p.setPath(newPath);
+            p.setParentPath(parentOf(newPath));
+            p.setUpdatedBy(userId);
+            p.setUpdatedAt(now);
+        }
+        return repository.saveAll(affected);
+    }
+
+    /** 规范化物化路径:统一前导 /、单 / 分隔、去尾 /、trim 每段、丢弃空段。 */
+    private String normalizePath(String raw) {
+        if (raw == null) return "/";
+        StringBuilder sb = new StringBuilder();
+        for (String seg : raw.trim().split("/")) {
+            String s = seg.trim();
+            if (!s.isEmpty()) sb.append('/').append(s);
+        }
+        return sb.length() == 0 ? "/" : sb.toString();
+    }
+
+    /** 父路径(path 去掉末段);顶层(如 /a)返回 null。 */
+    private String parentOf(String path) {
+        int idx = path.lastIndexOf('/');
+        return idx <= 0 ? null : path.substring(0, idx);
     }
 
     /** 给页追加一个资产(已上传到 MinIO 后调用)。 */

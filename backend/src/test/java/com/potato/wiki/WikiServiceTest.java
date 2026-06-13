@@ -178,6 +178,53 @@ class WikiServiceTest {
                 .hasMessageContaining("路径已存在");
     }
 
+    // ---- 目录移动 / 路径规范化 ----
+
+    @Test
+    void create_normalizes_path_and_parent() {
+        when(repo.findByPath("/vue/toast")).thenReturn(Optional.empty());
+        when(repo.save(any())).thenAnswer(i -> i.getArgument(0));
+        WikiPage p = service.create("Toast", "vue//toast/", "ignored-parent", "c", null, null, "u");
+        assertThat(p.getPath()).isEqualTo("/vue/toast");
+        assertThat(p.getParentPath()).isEqualTo("/vue");
+    }
+
+    @Test
+    void moveDir_cascades_prefix() {
+        WikiPage a = new WikiPage();
+        a.setPath("/dev/a");
+        WikiPage b = new WikiPage();
+        b.setPath("/dev/a/b");
+        WikiPage other = new WikiPage();
+        other.setPath("/other");
+        when(repo.findAllByOrderByPathAsc()).thenReturn(List.of(a, b, other));
+        when(repo.saveAll(any())).thenAnswer(i -> i.getArgument(0));
+        List<WikiPage> moved = service.moveDir("/dev/a", "/docs/x", "u");
+        assertThat(moved).extracting(WikiPage::getPath).containsExactlyInAnyOrder("/docs/x", "/docs/x/b");
+        assertThat(a.getParentPath()).isEqualTo("/docs");
+        assertThat(b.getParentPath()).isEqualTo("/docs/x");
+        assertThat(other.getPath()).isEqualTo("/other");
+    }
+
+    @Test
+    void moveDir_rejects_target_conflict() {
+        WikiPage a = new WikiPage();
+        a.setPath("/dev/a");
+        WikiPage taken = new WikiPage();
+        taken.setPath("/docs/x");
+        when(repo.findAllByOrderByPathAsc()).thenReturn(List.of(a, taken));
+        assertThatThrownBy(() -> service.moveDir("/dev/a", "/docs/x", "u"))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("已存在");
+    }
+
+    @Test
+    void moveDir_rejects_into_own_subtree() {
+        assertThatThrownBy(() -> service.moveDir("/dev/a", "/dev/a/sub", "u"))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("子目录");
+    }
+
     // ---- assets ----
 
     @Test

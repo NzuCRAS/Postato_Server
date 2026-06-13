@@ -53,3 +53,11 @@ export function deleteAsset(id: string, objectKey: string): Promise<WikiPageItem
     method: 'DELETE',
   })
 }
+
+/** 整目录移动/重命名:把 fromPrefix 子树整体迁到 toPrefix(后端级联改路径前缀)。 */
+export function moveDir(fromPrefix: string, toPrefix: string): Promise<WikiPageItem[]> {
+  return request<WikiPageItem[]>('/wiki/move-dir', {
+    method: 'POST',
+    body: JSON.stringify({ fromPrefix, toPrefix }),
+  })
+}

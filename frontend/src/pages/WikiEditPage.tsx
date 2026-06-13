@@ -1,7 +1,7 @@
 // 视图层:知识库文档独立编辑页(整页 编辑/分屏/预览)
 import { useState } from 'react'
 import { Button, Input, Segmented, Select, Space, Spin, Upload, message } from 'antd'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { useWikiEditor } from '../features/useWikiEditor'
 import MarkdownView from '../components/MarkdownView'
 import { handleMarkdownTabIndent } from '../features/markdown'
@@ -13,8 +13,9 @@ type ViewMode = '编辑' | '分屏' | '预览'
 
 export default function WikiEditPage() {
   const { id } = useParams()
+  const [searchParams] = useSearchParams()
   const navigate = useNavigate()
-  const { form, setForm, assets, loading, saving, save, upload, removeAsset } = useWikiEditor(id)
+  const { form, setForm, assets, loading, saving, save, upload, removeAsset } = useWikiEditor(id, searchParams.get('path') ?? undefined)
   const [view, setView] = useState<ViewMode>('分屏')
 
   if (loading || !form) return <Spin style={{ display: 'block', marginTop: 80 }} />
@@ -60,12 +61,6 @@ export default function WikiEditPage() {
             value={form.path}
             onChange={(e) => set({ path: e.target.value })}
             disabled={!!id}
-            style={{ width: 300 }}
-          />
-          <Input
-            placeholder="父路径(可空)"
-            value={form.parentPath}
-            onChange={(e) => set({ parentPath: e.target.value })}
             style={{ width: 300 }}
           />
           <Select
