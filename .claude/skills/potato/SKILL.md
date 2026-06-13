@@ -9,6 +9,19 @@ description: 在 Potato 平台上做开发任务时遵循的标准作业流程(S
 
 完整可调用的 MCP 能力清单见 `references/mcp-toolbox.md`;各步细节按需查对应 reference。
 
+## 开工先分流(按 `tier`,仅供参考)
+
+需求带 `tier`(创建时选,`Large`/`Medium`/`Small`,**仅供参考**,可按判断调整),据此定流程强度:
+- **Small**:精简——免技术方案、可不拆多节点(单节点或需求级推进),改完直接验证+回填。给小 bug / 小优化。
+- **Medium**:标准——按下方九步走(技术方案视情况)。
+- **Large**:完整——技术方案先行 + 细拆多节点 + 逐节点,必要时多轮。
+
+两个特殊入口:
+- **没有现成需求**(ad-hoc 任务 / 临时 bug)→ **先 `create_requirement`**(标好 `type` 与 `tier`)再走流程。
+- **bug 类任务**(`type=bugfix`)→ 实现前**先 root-cause**:稳定复现 + 拿运行时证据 + **禁止没定位就改**(别被表象 / 单个状态码带偏)。
+
+详见 `references/tiering.md`。
+
 ## 一轮闭环(九步)
 
 1. **弄清需求** — `get_requirement_detail(requirement_id)`,读 structured(用户故事/模块/验收)、dev_plan 现状、`open_corrections`、项目级 + 需求级 doc_links。**有未解决纠偏先据其调整**(见 `references/corrections.md`)。
