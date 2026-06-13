@@ -461,8 +461,16 @@ export function registerTools(server: McpServer, apiKey: string | undefined): vo
         .array(z.object({ type: z.string().optional(), title: z.string().optional(), path: z.string() }))
         .optional()
         .describe('关联知识库文档(设计/规范/效果参考)'),
+      type: z
+        .enum(['feature', 'improvement', 'bugfix'])
+        .optional()
+        .describe('需求分类:feature 增量 / improvement 修改优化 / bugfix 维护与 bug 修复'),
+      tier: z
+        .enum(['Large', 'Medium', 'Small'])
+        .optional()
+        .describe('复杂度档(建议创建时选,**仅供参考**):驱动 potato 流程强度——Small 精简 / Medium 标准 / Large 完整。缺省 Medium'),
     },
-    async ({ title, description_md, project_id, status, structured, doc_links }) => {
+    async ({ title, description_md, project_id, status, structured, doc_links, type, tier }) => {
       try {
         const res = await backendRequest<unknown>(`/requirements`, apiKey, {
           method: 'POST',
@@ -473,6 +481,8 @@ export function registerTools(server: McpServer, apiKey: string | undefined): vo
             status,
             structured,
             docLinks: doc_links,
+            type,
+            tier,
           }),
         })
         return { content: [{ type: 'text' as const, text: JSON.stringify(res, null, 2) }] }
