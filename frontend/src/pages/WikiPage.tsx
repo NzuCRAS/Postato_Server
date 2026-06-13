@@ -1,10 +1,10 @@
 // 视图层:知识库页(左目录树 + 搜索 + 分类筛选 + 右文档查看/资产/晋升)
 import { useState } from 'react'
-import { Breadcrumb, Button, Card, Empty, Input, Modal, Select, Space, Tag, Typography, message } from 'antd'
+import { Breadcrumb, Button, Card, Empty, Input, Modal, Popconfirm, Select, Space, Tag, Typography, message } from 'antd'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext'
 import { useWiki } from '../features/useWiki'
-import { moveDir, updateWiki } from '../api/wiki'
+import { moveDir, updateWiki, deleteWiki } from '../api/wiki'
 import WikiTree from '../components/WikiTree'
 import MarkdownView from '../components/MarkdownView'
 
@@ -52,6 +52,18 @@ export default function WikiPage() {
       reload()
     } catch (e) {
       message.error(e instanceof Error ? e.message : '晋升失败')
+    }
+  }
+
+  const doDelete = async () => {
+    if (!selected) return
+    try {
+      await deleteWiki(selected.id)
+      message.success('已删除')
+      setSelectedId(null)
+      reload()
+    } catch (e) {
+      message.error(e instanceof Error ? e.message : '删除失败')
     }
   }
 
@@ -106,6 +118,18 @@ export default function WikiPage() {
               <Space>
                 {canEdit && isTmp && <Button onClick={openPromote}>晋升</Button>}
                 {canEdit && <Button onClick={() => navigate(`/wiki/${selected.id}/edit`)}>编辑</Button>}
+                {canEdit && (
+                  <Popconfirm
+                    title="删除此文档?"
+                    description="将一并删除其挂载的资产,不可恢复。"
+                    okText="删除"
+                    okButtonProps={{ danger: true }}
+                    cancelText="取消"
+                    onConfirm={doDelete}
+                  >
+                    <Button danger>删除</Button>
+                  </Popconfirm>
+                )}
               </Space>
             </div>
             <Breadcrumb

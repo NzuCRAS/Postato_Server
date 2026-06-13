@@ -54,6 +54,11 @@ export function deleteAsset(id: string, objectKey: string): Promise<WikiPageItem
   })
 }
 
+/** 删除整页(后端连带删其 MinIO 资产)。 */
+export function deleteWiki(id: string): Promise<void> {
+  return request<void>(`/wiki/pages/${id}`, { method: 'DELETE' })
+}
+
 /** 整目录移动/重命名:把 fromPrefix 子树整体迁到 toPrefix(后端级联改路径前缀)。 */
 export function moveDir(fromPrefix: string, toPrefix: string): Promise<WikiPageItem[]> {
   return request<WikiPageItem[]>('/wiki/move-dir', {
