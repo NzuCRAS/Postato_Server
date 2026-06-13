@@ -14,7 +14,7 @@
 - **存储分层**:文本正文(Markdown)留 Mongo——检索/注入直接读它,**不外置**;二进制资产(demo html、视觉稿、截图、代码包)进 MinIO。
 - **MinIO 简单版**:单 bucket、后端代理上传、开发期 bucket 公开读、key 带页 id 前缀。
 - **分类模型**:`category` 受控枚举扩 `experience`;`doc` 作兜底;`tmp` 用 **tag** 表达「未晋升草稿」(维持现状)。
-- **晋升 = 带语义的 `update`**,不造专用 API(YAGNI)。
+- **晋升 = 带语义的 `update`**(摘 tmp + 设 category + **改 path**:把文档从临时区搬到目标板块),不造专用 API;为此**扩 `update` 支持改 path**(长久需求,非临时)。
 - **消费侧不在本 spec 固化**:SOP skill 正文 / RAG 留待后续在 skill 开发与使用中迭代;本期只保证「能按 category 批量取」的能力就位。
 
 ## 内容分类模型
@@ -55,8 +55,12 @@ Asset {
 - 先验经验触发式检索 = `search_knowledge(category="experience", q=...)`。
 - **RAG 本期不做**:维持关键词/分词;`MatchMode.VECTOR` 仍占位报 501,接口已预留。
 
-## 晋升机制(最小形态)
-「晋升」复用现有 `update`(已能改 tags/category/parentPath):摘 `tmp` 标签 + 设正式 category + 可改 path(如从 `/tech-proposals/...` 移到 `/experience/...`)。不引入独立 `promote` API——晋升即一次带语义的 update。前端给 tmp 页一个「晋升」按钮(填目标 category/path);AI 经 `write_knowledge` 亦可晋升。
+## 晋升机制
+「晋升」= 摘 `tmp` 标签 + 设正式 category(多半 `experience`)+ **改 path**(把文档从临时区搬到目标板块)。改 path 是晋升的**固有部分、长久需求**(非临时):技术方案文档统一放临时区(`/tech-proposals/...`),先验经验有**独立板块**(约定根 `/experience/...`);晋升 tmp 技术方案 → 先验经验,本质就是把文档从临时区搬到经验板块,path 必须跟着变。
+
+**实现**:扩展 `WikiService.update` **支持改 path**(此前不改):传入 path 且与原 path 不同时,先查重(新 path 已存在 → 409)再 `setPath`。晋升对象通常是叶子页,**不级联**更新子页 `parentPath`(级联留后续,非叶子改 path 时再处理)。不引入独立 `promote` API——晋升即一次带语义的 `update`(改 path + 设 category + 去 tmp)。前端给 tmp 页「晋升」Modal(填目标 category + 新 path);AI 经 `write_knowledge`(按新 path upsert)亦可达成。
+
+> 注:晋升改 path 后,原 `DevPlan` 节点记的 `artifacts.tech_proposal_id`(旧 path)会失效——可接受(技术方案晋升即脱离原节点、成为通用经验),不做级联更新。
 
 ## MCP(工具数不变,确认参数)
 - `write_knowledge` / `search_knowledge`:`category` 入参取值含 `experience`(改已有工具参数,**重启即生效、无需重连**)。
@@ -77,13 +81,13 @@ Asset {
 - `experience` 加入 `VALID_CATEGORY`;`assets` 默认空数组;存量 `category` 空读作 `doc`——全向后兼容,无数据迁移脚本。
 
 ## 本期范围 / 非目标
-- **做**:`experience` 类、`assets` + MinIO 简单版、检索 category 过滤(已有)、晋升 = 语义 update、前端三件套(category 选择/资产上传/筛选)+ 晋升按钮、收编并修绿 B1。
+- **做**:`experience` 类、`assets` + MinIO 简单版、检索 category 过滤(已有)、`update` 支持改 path、晋升 = 语义 update(含改 path)、前端三件套(category 选择/资产上传/筛选)+ 晋升 Modal、收编并修绿 B1。
 - **不做(后续 / skill 阶段)**:RAG/向量检索、SOP skill 正文、签名 URL / 生产加固、独立资产集合、资产跨页共享、需求↔资产反向索引 UI、检索「只返清单省上下文」优化(nice-to-have)。
 
 ## 验证
 - 后端:`docker compose exec -T backend mvn -Dtest=WikiServiceTest test`(category 默认 doc / 非法 400 / experience 合法 / 按 category 过滤);`StorageService` 上传/取 URL 冒烟(可用 manual)。
 - MCP/前端:`tsc --noEmit`。
-- 前端界面统一验证:新建 experience 页、上传一张图/一个 html 资产看 URL 可访问、按 category 筛选、把一个 tmp 页晋升。
+- 前端界面统一验证:新建 experience 页、上传一张图/一个 html 资产看 URL 可访问、按 category 筛选、把一个 tmp 技术方案页晋升(确认 path 从 `/tech-proposals/...` 移到 `/experience/...`、tmp 消失、category 变 experience)。
 
 ## 风险
 - **公开读**:开发期 bucket 公开读可接受;生产须换签名 URL / 私有桶(已列非目标,留部署切片)。
