@@ -11,7 +11,9 @@ record RequirementRequest(
         Structured structured,
         String status,
         String projectId,
-        java.util.List<com.potato.common.DocLink> docLinks) {
+        java.util.List<com.potato.common.DocLink> docLinks,
+        String type,
+        String tier) {
 }
 
 /** 状态变更请求体 */

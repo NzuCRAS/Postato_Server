@@ -13,6 +13,9 @@ import java.util.Set;
 public class RequirementService {
 
     private static final Set<String> VALID_STATUSES = Set.of("draft", "clarifying", "confirmed", "deprecated");
+    private static final Set<String> VALID_TYPES = Set.of("feature", "improvement", "bugfix");
+    private static final Set<String> VALID_TIERS = Set.of("Large", "Medium", "Small");
+    private static final String DEFAULT_TIER = "Medium";
     private static final String DEFAULT_PROJECT = "default";
 
     private final RequirementRepository repository;
@@ -39,7 +42,8 @@ public class RequirementService {
     }
 
     public Requirement create(String title, String descriptionMd, Structured structured, String status,
-                              String projectId, List<com.potato.common.DocLink> docLinks, String userId) {
+                              String projectId, List<com.potato.common.DocLink> docLinks,
+                              String type, String tier, String userId) {
         if (title == null || title.isBlank()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "标题必填");
         }
@@ -50,6 +54,8 @@ public class RequirementService {
         r.setStructured(structured != null ? structured : new Structured());
         if (docLinks != null) r.setDocLinks(docLinks);
         r.setStatus(normalizeStatus(status, "draft"));
+        r.setType(validateType(type));
+        r.setTier(normalizeTier(tier));
         r.setVersion(1);
         r.setCreatedBy(userId);
         Instant now = Instant.now();
@@ -112,5 +118,23 @@ public class RequirementService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "非法状态: " + status);
         }
         return status;
+    }
+
+    /** 校验 type(可空,描述用):null/blank 放行;非法值 400。 */
+    private String validateType(String type) {
+        if (type == null || type.isBlank()) return null;
+        if (!VALID_TYPES.contains(type)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "非法 type: " + type + "(允许 feature/improvement/bugfix)");
+        }
+        return type;
+    }
+
+    /** tier 建议创建时选;null/blank → 默认 Medium;非法值 400。仅供参考,不硬门。 */
+    private String normalizeTier(String tier) {
+        if (tier == null || tier.isBlank()) return DEFAULT_TIER;
+        if (!VALID_TIERS.contains(tier)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "非法 tier: " + tier + "(允许 Large/Medium/Small)");
+        }
+        return tier;
     }
 }

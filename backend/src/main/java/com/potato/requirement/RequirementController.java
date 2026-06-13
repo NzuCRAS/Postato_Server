@@ -50,7 +50,7 @@ public class RequirementController {
                               @Valid @RequestBody RequirementRequest req) {
         permissionService.check(user, "requirement", "create");
         return service.create(req.title(), req.descriptionMd(), req.structured(), req.status(),
-                req.projectId(), req.docLinks(), user.getId());
+                req.projectId(), req.docLinks(), req.type(), req.tier(), user.getId());
     }
 
     @PutMapping("/{id}")

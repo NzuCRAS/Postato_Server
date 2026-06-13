@@ -23,6 +23,11 @@ public class Requirement {
     private String status;      // draft | clarifying | confirmed | deprecated
     private int version;
 
+    /** 需求分类(描述用):feature 增量 / improvement 修改优化 / bugfix 维护与 bug 修复 */
+    private String type;
+    /** 复杂度档(创建时选,**仅供参考**——建议 potato 流程强度,非硬门):Large / Medium / Small */
+    private String tier;
+
     private Structured structured = new Structured();
 
     private com.potato.devplan.DevPlan devPlan;
