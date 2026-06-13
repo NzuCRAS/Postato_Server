@@ -1,6 +1,6 @@
 // 视图层:知识库文档独立编辑页(整页 编辑/分屏/预览)
 import { useState } from 'react'
-import { Button, Input, Segmented, Select, Space, Spin, message } from 'antd'
+import { Button, Input, Segmented, Select, Space, Spin, Upload, message } from 'antd'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useWikiEditor } from '../features/useWikiEditor'
 import MarkdownView from '../components/MarkdownView'
@@ -13,7 +13,7 @@ type ViewMode = '编辑' | '分屏' | '预览'
 export default function WikiEditPage() {
   const { id } = useParams()
   const navigate = useNavigate()
-  const { form, setForm, loading, saving, save } = useWikiEditor(id)
+  const { form, setForm, assets, loading, saving, save, upload, removeAsset } = useWikiEditor(id)
   const [view, setView] = useState<ViewMode>('分屏')
 
   if (loading || !form) return <Spin style={{ display: 'block', marginTop: 80 }} />
@@ -75,7 +75,38 @@ export default function WikiEditPage() {
             tokenSeparators={[',', '，']}
             style={{ minWidth: 260 }}
           />
+          <Select
+            value={form.category ?? 'doc'}
+            onChange={(category: string) => set({ category })}
+            style={{ width: 160 }}
+            options={[
+              { value: 'doc', label: 'doc 通用' },
+              { value: 'asset', label: 'asset 可复用' },
+              { value: 'standard', label: 'standard 规范' },
+              { value: 'experience', label: 'experience 经验' },
+            ]}
+          />
         </Space>
+        {id && (
+          <Space wrap>
+            <Upload
+              showUploadList={false}
+              beforeUpload={(file) => {
+                upload(file).then(() => message.success('已上传')).catch((e) => message.error(e.message))
+                return false
+              }}
+            >
+              <Button>上传资产</Button>
+            </Upload>
+            {assets.map((a) => (
+              <Space key={a.objectKey} size={4}>
+                <a href={a.url} target="_blank" rel="noreferrer">{a.name}</a>
+                <Button size="small" type="link" onClick={() => navigator.clipboard.writeText(a.url)}>复制URL</Button>
+                <Button size="small" type="link" danger onClick={() => removeAsset(a.objectKey)}>删除</Button>
+              </Space>
+            ))}
+          </Space>
+        )}
       </Space>
 
       <div style={{ display: 'flex', gap: 12, flex: 1, marginTop: 12, minHeight: 0 }}>

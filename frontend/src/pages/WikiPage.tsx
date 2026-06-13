@@ -1,19 +1,57 @@
-// 视图层:知识库页(左目录树 + 搜索 + 右文档查看;编辑/新建跳转到独立编辑页)
-import { Button, Card, Empty, Input, Space, Tag, Typography } from 'antd'
+// 视图层:知识库页(左目录树 + 搜索 + 分类筛选 + 右文档查看/资产/晋升)
+import { useState } from 'react'
+import { Button, Card, Empty, Input, Modal, Select, Space, Tag, Typography, message } from 'antd'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext'
 import { useWiki } from '../features/useWiki'
+import { updateWiki } from '../api/wiki'
 import WikiTree from '../components/WikiTree'
 import MarkdownView from '../components/MarkdownView'
 
 const { Title, Text } = Typography
 const { Search } = Input
 
+const CATEGORY_OPTIONS = [
+  { value: '', label: '全部分类' },
+  { value: 'doc', label: 'doc 通用' },
+  { value: 'asset', label: 'asset 可复用' },
+  { value: 'standard', label: 'standard 规范' },
+  { value: 'experience', label: 'experience 经验' },
+]
+
 export default function WikiPage() {
   const { user } = useAuth()
   const navigate = useNavigate()
-  const { pages, loading, selected, selectedId, setSelectedId, search } = useWiki()
+  const { pages, loading, selected, selectedId, setSelectedId, search, category, filterCategory, reload } = useWiki()
   const canEdit = user?.functions.some((f) => f === 'admin' || f === 'product') ?? false
+  const [promoting, setPromoting] = useState(false)
+  const [promoteCat, setPromoteCat] = useState('experience')
+  const [promotePath, setPromotePath] = useState('')
+
+  const isTmp = selected?.tags?.includes('tmp') ?? false
+
+  const openPromote = () => {
+    if (!selected) return
+    const seg = selected.path.split('/').filter(Boolean).pop() ?? 'untitled'
+    setPromotePath(`/experience/${seg}`)
+    setPromoting(true)
+  }
+
+  const doPromote = async () => {
+    if (!selected) return
+    try {
+      await updateWiki(selected.id, {
+        category: promoteCat,
+        path: promotePath || undefined,
+        tags: (selected.tags ?? []).filter((t) => t !== 'tmp'),
+      })
+      message.success('已晋升')
+      setPromoting(false)
+      reload()
+    } catch (e) {
+      message.error(e instanceof Error ? e.message : '晋升失败')
+    }
+  }
 
   return (
     <div style={{ display: 'flex', gap: 16, height: 'calc(100vh - 140px)' }}>
@@ -23,7 +61,13 @@ export default function WikiPage() {
         style={{ width: 280, overflow: 'auto', flexShrink: 0 }}
         extra={canEdit ? <Button size="small" type="primary" onClick={() => navigate('/wiki/new')}>新建</Button> : null}
       >
-        <Search placeholder="搜索标题/内容/标签" onSearch={search} allowClear style={{ marginBottom: 12 }} />
+        <Search placeholder="搜索标题/内容/标签" onSearch={search} allowClear style={{ marginBottom: 8 }} />
+        <Select
+          value={category ?? ''}
+          onChange={(v: string) => filterCategory(v || undefined)}
+          options={CATEGORY_OPTIONS}
+          style={{ width: '100%', marginBottom: 12 }}
+        />
         <WikiTree pages={pages} selectedId={selectedId} onSelect={setSelectedId} />
       </Card>
 
@@ -32,18 +76,52 @@ export default function WikiPage() {
           <>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <Title level={3} style={{ margin: 0 }}>{selected.title}</Title>
-              {canEdit && <Button onClick={() => navigate(`/wiki/${selected.id}/edit`)}>编辑</Button>}
+              <Space>
+                {canEdit && isTmp && <Button onClick={openPromote}>晋升</Button>}
+                {canEdit && <Button onClick={() => navigate(`/wiki/${selected.id}/edit`)}>编辑</Button>}
+              </Space>
             </div>
             <Space style={{ margin: '8px 0' }} wrap>
               <Text type="secondary" code>{selected.path}</Text>
+              {selected.category && <Tag color="blue">{selected.category}</Tag>}
               {selected.tags.map((t) => <Tag key={t}>{t}</Tag>)}
             </Space>
+            {(selected.assets?.length ?? 0) > 0 && (
+              <Space style={{ marginBottom: 8 }} wrap>
+                <Text type="secondary">资产:</Text>
+                {selected.assets!.map((a) => (
+                  <a key={a.objectKey} href={a.url} target="_blank" rel="noreferrer">{a.name}</a>
+                ))}
+              </Space>
+            )}
             <MarkdownView content={selected.content} />
           </>
         ) : (
           <Empty description={loading ? '加载中…' : '选择左侧文档查看,或点击「新建」'} />
         )}
       </Card>
+
+      <Modal title="晋升为正式知识" open={promoting} onOk={doPromote} onCancel={() => setPromoting(false)} okText="晋升">
+        <p>去掉 <Tag>tmp</Tag> 标签、归入正式分类,并把文档从临时区搬到正式板块路径:</p>
+        <Space direction="vertical" style={{ width: '100%' }}>
+          <Select
+            value={promoteCat}
+            onChange={setPromoteCat}
+            style={{ width: '100%' }}
+            options={[
+              { value: 'experience', label: 'experience 先验经验' },
+              { value: 'standard', label: 'standard 代码规范' },
+              { value: 'asset', label: 'asset 可复用代码' },
+              { value: 'doc', label: 'doc 通用文档' },
+            ]}
+          />
+          <Input
+            placeholder="目标 path,如 /experience/cache-avalanche"
+            value={promotePath}
+            onChange={(e) => setPromotePath(e.target.value)}
+          />
+        </Space>
+      </Modal>
     </div>
   )
 }

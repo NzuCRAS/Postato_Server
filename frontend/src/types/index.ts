@@ -153,6 +153,15 @@ export interface Requirement {
 
 // ---- 知识库(里程碑 4)----
 
+export interface WikiAsset {
+  name: string
+  objectKey: string
+  url: string
+  contentType?: string
+  size?: number
+  uploadedAt?: string
+}
+
 export interface WikiPageItem {
   id: string
   projectId?: string
@@ -160,7 +169,9 @@ export interface WikiPageItem {
   path: string
   parentPath?: string
   content: string
+  category?: string // doc | asset | standard | experience
   tags: string[]
+  assets?: WikiAsset[]
   status: string
   version: number
   updatedAt: string

@@ -1,5 +1,5 @@
 // 视图层:知识库目录树(折线连接 + 整行可点)
-import { Tree } from 'antd'
+import { Tag, Tree } from 'antd'
 import type { DataNode } from 'antd/es/tree'
 import type { WikiPageItem } from '../types'
 
@@ -21,7 +21,12 @@ function toTreeData(pages: WikiPageItem[]): DataNode[] {
 
   const build = (p: WikiPageItem): DataNode => ({
     key: p.id,
-    title: p.title,
+    title: (
+      <span>
+        {p.title}
+        {p.category && p.category !== 'doc' ? <Tag style={{ marginLeft: 6 }}>{p.category}</Tag> : null}
+      </span>
+    ),
     children: (childrenOf[p.path] ?? []).map(build),
   })
 
