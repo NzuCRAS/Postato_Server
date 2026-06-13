@@ -8,6 +8,7 @@ export interface WikiInput {
   parentPath?: string
   content?: string
   category?: string // doc | asset | standard | experience
+  kind?: string // folder | doc
   tags?: string[]
 }
 

@@ -170,6 +170,7 @@ export interface WikiPageItem {
   parentPath?: string
   content: string
   category?: string // doc | asset | standard | experience
+  kind?: string // folder | doc
   tags: string[]
   assets?: WikiAsset[]
   status: string

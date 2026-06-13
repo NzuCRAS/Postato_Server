@@ -87,17 +87,18 @@ function buildTree(pages: WikiPageItem[], opts: Pick<Props, 'canEdit' | 'onMoveN
       const node = ensure(p.path)
       const segs = p.path.split('/').filter(Boolean)
       const name = segs[segs.length - 1] ?? p.path
-      // 升级为文档节点(保留可能已有的子节点 —— 该文档恰好也是更深文档的祖先时)
-      node.isDir = false
+      const isFolder = p.kind === 'folder'
+      // folder=容器(可展开,点击看描述);doc=叶子文档
+      node.isDir = isFolder
       node.key = p.id
-      node.icon = <FileTextOutlined />
+      node.icon = isFolder ? <FolderOutlined /> : <FileTextOutlined />
       const label: ReactNode = (
         <span>
           {p.title}
           {p.category && p.category !== 'doc' ? <Tag style={{ marginLeft: 6 }}>{p.category}</Tag> : null}
         </span>
       )
-      node.title = withActions({ isDir: false, path: p.path, id: p.id, name }, label)
+      node.title = withActions({ isDir: isFolder, path: p.path, id: p.id, name }, label)
     })
 
   return roots
@@ -105,7 +106,7 @@ function buildTree(pages: WikiPageItem[], opts: Pick<Props, 'canEdit' | 'onMoveN
 
 export default function WikiTree({ pages, selectedId, onSelect, canEdit, onMoveNode, onNewInDir }: Props) {
   return (
-    <Tree
+    <Tree.DirectoryTree
       showLine={{ showLeafIcon: false }}
       showIcon
       blockNode
@@ -113,7 +114,7 @@ export default function WikiTree({ pages, selectedId, onSelect, canEdit, onMoveN
       selectedKeys={selectedId ? [selectedId] : []}
       onSelect={(keys) => {
         const k = String(keys[0] ?? '')
-        // 目录节点 key 形如 dir:/a/b,只用于展开;文档节点 key 是文档 id,才触发查看
+        // 整行点击即展开/折叠(DirectoryTree);虚拟目录(dir:前缀)只展开不选中,真实页(folder/doc)选中查看
         if (k && !k.startsWith('dir:')) onSelect(k)
       }}
       defaultExpandAll

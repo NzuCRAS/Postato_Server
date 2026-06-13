@@ -4,7 +4,7 @@ import { Breadcrumb, Button, Card, Empty, Input, Modal, Popconfirm, Select, Spac
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext'
 import { useWiki } from '../features/useWiki'
-import { moveDir, updateWiki, deleteWiki } from '../api/wiki'
+import { createWiki, moveDir, updateWiki, deleteWiki } from '../api/wiki'
 import WikiTree from '../components/WikiTree'
 import MarkdownView from '../components/MarkdownView'
 
@@ -29,6 +29,8 @@ export default function WikiPage() {
   const [promotePath, setPromotePath] = useState('')
   const [moveTarget, setMoveTarget] = useState<{ isDir: boolean; path: string; id?: string; name: string } | null>(null)
   const [movePath, setMovePath] = useState('')
+  const [folderOpen, setFolderOpen] = useState(false)
+  const [folderForm, setFolderForm] = useState({ title: '', path: '', desc: '' })
 
   const isTmp = selected?.tags?.includes('tmp') ?? false
 
@@ -92,13 +94,33 @@ export default function WikiPage() {
     navigate(`/wiki/new?path=${encodeURIComponent(dirPath + '/')}`)
   }
 
+  const doCreateFolder = async () => {
+    if (!folderForm.title.trim() || !folderForm.path.trim()) {
+      message.error('文件夹名和路径必填')
+      return
+    }
+    try {
+      await createWiki({ title: folderForm.title, path: folderForm.path, kind: 'folder', content: folderForm.desc })
+      message.success('已创建文件夹')
+      setFolderOpen(false)
+      reload()
+    } catch (e) {
+      message.error(e instanceof Error ? e.message : '创建失败')
+    }
+  }
+
   return (
     <div style={{ display: 'flex', gap: 16, height: 'calc(100vh - 140px)' }}>
       <Card
         size="small"
         title="知识库"
         style={{ width: 280, overflow: 'auto', flexShrink: 0 }}
-        extra={canEdit ? <Button size="small" type="primary" onClick={() => navigate('/wiki/new')}>新建</Button> : null}
+        extra={canEdit ? (
+          <Space size={4}>
+            <Button size="small" onClick={() => { setFolderForm({ title: '', path: '', desc: '' }); setFolderOpen(true) }}>新建文件夹</Button>
+            <Button size="small" type="primary" onClick={() => navigate('/wiki/new')}>新建</Button>
+          </Space>
+        ) : null}
       >
         <Search placeholder="搜索标题/内容/标签" onSearch={search} allowClear style={{ marginBottom: 8 }} />
         <Select
@@ -190,6 +212,14 @@ export default function WikiPage() {
             : '输入文档的新路径(改末段=重命名,改父目录=移动):'}
         </p>
         <Input value={movePath} onChange={(e) => setMovePath(e.target.value)} placeholder="如 /development/code-style/react" />
+      </Modal>
+
+      <Modal title="新建文件夹" open={folderOpen} onOk={doCreateFolder} onCancel={() => setFolderOpen(false)} okText="创建">
+        <Space direction="vertical" style={{ width: '100%' }}>
+          <Input placeholder="文件夹名(标题)" value={folderForm.title} onChange={(e) => setFolderForm({ ...folderForm, title: e.target.value })} />
+          <Input placeholder="路径,如 /development/guides" value={folderForm.path} onChange={(e) => setFolderForm({ ...folderForm, path: e.target.value })} />
+          <Input.TextArea placeholder="文件夹描述(可选)" value={folderForm.desc} onChange={(e) => setFolderForm({ ...folderForm, desc: e.target.value })} rows={3} />
+        </Space>
       </Modal>
     </div>
   )
