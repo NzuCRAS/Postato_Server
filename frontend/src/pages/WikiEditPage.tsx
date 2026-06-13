@@ -4,6 +4,7 @@ import { Button, Input, Segmented, Select, Space, Spin, Upload, message } from '
 import { useNavigate, useParams } from 'react-router-dom'
 import { useWikiEditor } from '../features/useWikiEditor'
 import MarkdownView from '../components/MarkdownView'
+import { handleMarkdownTabIndent } from '../features/markdown'
 import type { WikiInput } from '../api/wiki'
 
 const { TextArea } = Input
@@ -114,6 +115,7 @@ export default function WikiEditPage() {
           <TextArea
             value={form.content}
             onChange={(e) => set({ content: e.target.value })}
+            onKeyDown={(e) => handleMarkdownTabIndent(e, form.content ?? '', (v) => set({ content: v }))}
             placeholder="Markdown 源文本"
             style={{ flex: 1, height: '100%', resize: 'none', fontFamily: 'monospace' }}
           />

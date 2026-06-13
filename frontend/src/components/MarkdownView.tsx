@@ -13,6 +13,7 @@ import 'github-markdown-css/github-markdown-light.css'
 import 'highlight.js/styles/github.css'
 import 'katex/dist/katex.min.css'
 import MermaidBlock from './MermaidBlock'
+import { normalizeOrderedMarkers } from '../features/markdown'
 
 // rehype 顺序关键(已实测验证):
 //   rehypeRaw 先把内嵌 HTML 解析进语法树
@@ -58,7 +59,7 @@ export default function MarkdownView({ content, className }: { content: string; 
   return (
     <div className={`markdown-body${className ? ` ${className}` : ''}`} style={{ background: 'transparent', fontSize: 14 }}>
       <ReactMarkdown remarkPlugins={remarkPlugins} rehypePlugins={rehypePlugins} components={components}>
-        {content || ''}
+        {normalizeOrderedMarkers(content || '')}
       </ReactMarkdown>
     </div>
   )

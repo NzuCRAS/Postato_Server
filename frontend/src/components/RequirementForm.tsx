@@ -2,6 +2,7 @@
 import { useState } from 'react'
 import { Button, Input, Segmented, Typography, message } from 'antd'
 import MarkdownView from './MarkdownView'
+import { handleMarkdownTabIndent } from '../features/markdown'
 import StructuredView from './StructuredView'
 import type { Structured } from '../types'
 
@@ -92,6 +93,7 @@ export default function RequirementForm({ mode, initial, submitting, onSubmit, o
             <TextArea
               value={descriptionMd}
               onChange={(e) => setDescriptionMd(e.target.value)}
+              onKeyDown={(e) => handleMarkdownTabIndent(e, descriptionMd, setDescriptionMd)}
               placeholder="原始需求描述"
               style={{ height: 140, fontFamily: 'monospace' }}
             />
