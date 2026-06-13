@@ -56,12 +56,17 @@ export function registerTools(server: McpServer, apiKey: string | undefined): vo
         .describe('匹配模式,默认 fuzzy'),
       include_tmp: z.boolean().optional().describe('是否纳入 tmp 临时页,默认 false'),
       limit: z.number().optional().describe('返回条数,默认 3'),
+      category: z
+        .enum(['doc', 'asset', 'standard', 'experience'])
+        .optional()
+        .describe('按资产分类过滤:doc/asset/standard/experience'),
     },
-    async ({ query, match_mode, include_tmp, limit }) => {
+    async ({ query, match_mode, include_tmp, limit, category }) => {
       try {
         const qs = new URLSearchParams({ q: query })
         if (match_mode) qs.set('match_mode', match_mode)
         if (include_tmp) qs.set('include_tmp', 'true')
+        if (category) qs.set('category', category)
         const results = await backendRequest<Array<Record<string, any>>>(
           `/wiki/search?${qs.toString()}`,
           apiKey,
@@ -69,6 +74,7 @@ export function registerTools(server: McpServer, apiKey: string | undefined): vo
         const top = (results ?? []).slice(0, limit ?? 3).map((p) => ({
           title: p.title,
           path: p.path,
+          category: p.category,
           tags: p.tags,
           snippet: String(p.content ?? '').slice(0, 300),
         }))
@@ -265,12 +271,16 @@ export function registerTools(server: McpServer, apiKey: string | undefined): vo
       content: z.string().describe('Markdown 内容'),
       tags: z.array(z.string()).optional(),
       parent_path: z.string().optional().describe('父级路径(目录树用)'),
+      category: z
+        .enum(['doc', 'asset', 'standard', 'experience'])
+        .optional()
+        .describe('资产分类:doc(默认)/asset(可复用代码)/standard(代码规范)/experience(先验经验)'),
     },
-    async ({ path, title, content, tags, parent_path }) => {
+    async ({ path, title, content, tags, parent_path, category }) => {
       try {
         const res = await backendRequest<unknown>(`/wiki/pages/upsert`, apiKey, {
           method: 'POST',
-          body: JSON.stringify({ path, title, content, tags, parentPath: parent_path }),
+          body: JSON.stringify({ path, title, content, tags, parentPath: parent_path, category }),
         })
         return { content: [{ type: 'text' as const, text: JSON.stringify(res, null, 2) }] }
       } catch (e) {
