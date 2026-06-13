@@ -47,7 +47,7 @@ public class WikiController {
     @PostMapping("/pages")
     public WikiPage create(@AuthenticationPrincipal User user, @RequestBody WikiPageRequest req) {
         permissionService.check(user, "wiki", "edit");
-        return service.create(req.title(), req.path(), req.parentPath(), req.content(), req.category(), req.tags(), user.getId());
+        return service.create(req.title(), req.path(), req.parentPath(), req.content(), req.category(), req.tags(), req.kind(), user.getId());
     }
 
     /** 按 path upsert(知识沉淀 / 技术方案用):命中更新、否则创建。 */

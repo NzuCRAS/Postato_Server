@@ -119,13 +119,13 @@ class WikiServiceTest {
     @Test
     void create_defaults_category_to_doc_when_null() {
         when(repo.save(any())).thenAnswer(i -> i.getArgument(0));
-        WikiPage p = service.create("T", "/p", null, "c", null, null, "u");
+        WikiPage p = service.create("T", "/p", null, "c", null, null, null, "u");
         assertThat(p.getCategory()).isEqualTo("doc");
     }
 
     @Test
     void create_rejects_invalid_category() {
-        assertThatThrownBy(() -> service.create("T", "/p", null, "c", "bogus", null, "u"))
+        assertThatThrownBy(() -> service.create("T", "/p", null, "c", "bogus", null, null, "u"))
                 .isInstanceOf(ResponseStatusException.class)
                 .hasMessageContaining("category");
     }
@@ -133,7 +133,7 @@ class WikiServiceTest {
     @Test
     void create_accepts_experience_category() {
         when(repo.save(any())).thenAnswer(i -> i.getArgument(0));
-        WikiPage p = service.create("T", "/p", null, "c", "experience", null, "u");
+        WikiPage p = service.create("T", "/p", null, "c", "experience", null, null, "u");
         assertThat(p.getCategory()).isEqualTo("experience");
     }
 
@@ -185,7 +185,7 @@ class WikiServiceTest {
     void create_normalizes_path_and_parent() {
         when(repo.findByPath("/vue/toast")).thenReturn(Optional.empty());
         when(repo.save(any())).thenAnswer(i -> i.getArgument(0));
-        WikiPage p = service.create("Toast", "vue//toast/", "ignored-parent", "c", null, null, "u");
+        WikiPage p = service.create("Toast", "vue//toast/", "ignored-parent", "c", null, null, null, "u");
         assertThat(p.getPath()).isEqualTo("/vue/toast");
         assertThat(p.getParentPath()).isEqualTo("/vue");
     }
@@ -273,5 +273,45 @@ class WikiServiceTest {
         assertThatThrownBy(() -> service.delete("nope"))
                 .isInstanceOf(ResponseStatusException.class)
                 .hasMessageContaining("不存在");
+    }
+
+    // ---- kind folder/doc ----
+
+    @Test
+    void create_defaults_kind_to_doc() {
+        when(repo.save(any())).thenAnswer(i -> i.getArgument(0));
+        WikiPage p = service.create("X", "/x", null, "c", null, null, null, "u");
+        assertThat(p.getKind()).isEqualTo("doc");
+    }
+
+    @Test
+    void create_folder_kind() {
+        when(repo.save(any())).thenAnswer(i -> i.getArgument(0));
+        WikiPage p = service.create("F", "/f", null, "desc", null, null, "folder", "u");
+        assertThat(p.getKind()).isEqualTo("folder");
+    }
+
+    @Test
+    void create_allows_doc_under_folder() {
+        WikiPage folder = new WikiPage();
+        folder.setPath("/f");
+        folder.setKind("folder");
+        when(repo.findByPath("/f/b")).thenReturn(Optional.empty());
+        when(repo.findByPath("/f")).thenReturn(Optional.of(folder));
+        when(repo.save(any())).thenAnswer(i -> i.getArgument(0));
+        WikiPage p = service.create("B", "/f/b", null, "c", null, null, "doc", "u");
+        assertThat(p.getPath()).isEqualTo("/f/b");
+    }
+
+    @Test
+    void create_rejects_doc_under_doc() {
+        WikiPage parentDoc = new WikiPage();
+        parentDoc.setPath("/a");
+        parentDoc.setKind("doc");
+        when(repo.findByPath("/a/b")).thenReturn(Optional.empty());
+        when(repo.findByPath("/a")).thenReturn(Optional.of(parentDoc));
+        assertThatThrownBy(() -> service.create("B", "/a/b", null, "c", null, null, "doc", "u"))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("文档下");
     }
 }

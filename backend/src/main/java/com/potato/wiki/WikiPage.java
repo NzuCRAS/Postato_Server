@@ -22,6 +22,7 @@ public class WikiPage {
     private String parentPath;  // 父路径,可空(根节点)
     private String content;     // Markdown
     private String category;    // doc(默认) | asset(可复用资产) | standard(代码规范);存量空值读作 doc
+    private String kind;        // folder | doc;存量空值读作 doc。folder=容器(content 当描述)、doc=叶子
     private List<String> tags = new ArrayList<>();
     private String status = "published"; // draft | published | archived
     private int version;

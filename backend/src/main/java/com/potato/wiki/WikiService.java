@@ -15,6 +15,7 @@ public class WikiService {
     private static final String DEFAULT_PROJECT = "default";
     static final String DEFAULT_CATEGORY = "doc";
     private static final Set<String> VALID_CATEGORY = Set.of("doc", "asset", "standard", "experience");
+    private static final Set<String> VALID_KIND = Set.of("folder", "doc");
 
     private final WikiPageRepository repository;
 
@@ -31,7 +32,7 @@ public class WikiService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "文档不存在"));
     }
 
-    public WikiPage create(String title, String path, String parentPath, String content, String category, List<String> tags, String userId) {
+    public WikiPage create(String title, String path, String parentPath, String content, String category, List<String> tags, String kind, String userId) {
         if (title == null || title.isBlank() || path == null || path.isBlank()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "标题和路径必填");
         }
@@ -39,6 +40,15 @@ public class WikiService {
         repository.findByPath(normalized).ifPresent(p -> {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "路径已存在: " + normalized);
         });
+        // 不能在文档(doc)下建子项:父若为已存在的 doc 则拒绝(挡"文件下存文件";父是虚拟目录/folder/根则放行)
+        String parent = parentOf(normalized);
+        if (parent != null) {
+            repository.findByPath(parent).ifPresent(pp -> {
+                if ("doc".equals(effectiveKind(pp))) {
+                    throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "不能在文档下创建子项,请先建文件夹: " + parent);
+                }
+            });
+        }
         WikiPage page = new WikiPage();
         page.setProjectId(DEFAULT_PROJECT);
         page.setTitle(title);
@@ -46,6 +56,7 @@ public class WikiService {
         page.setParentPath(parentOf(normalized));
         page.setContent(content);
         page.setCategory(normalizeCategory(category));
+        page.setKind(normalizeKind(kind));
         if (tags != null) page.setTags(tags);
         page.setStatus("published");
         page.setVersion(1);
@@ -87,7 +98,7 @@ public class WikiService {
         String normalized = normalizePath(path);
         return repository.findByPath(normalized)
                 .map(existing -> update(existing.getId(), title, normalized, content, category, tags, parentPath, userId))
-                .orElseGet(() -> create(title, normalized, parentPath, content, category, tags, userId));
+                .orElseGet(() -> create(title, normalized, parentPath, content, category, tags, "doc", userId));
     }
 
     /**
@@ -212,6 +223,21 @@ public class WikiService {
     /** 读取用:存量空值视为 doc。 */
     private String effectiveCategory(WikiPage p) {
         return (p.getCategory() == null || p.getCategory().isBlank()) ? DEFAULT_CATEGORY : p.getCategory();
+    }
+
+    /** 写入用 kind:null/blank → doc;非法 → 400。 */
+    private String normalizeKind(String kind) {
+        if (kind == null || kind.isBlank()) return "doc";
+        String k = kind.trim();
+        if (!VALID_KIND.contains(k)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "非法 kind: " + kind + "(允许 folder/doc)");
+        }
+        return k;
+    }
+
+    /** 读取用 kind:存量空值视为 doc。 */
+    private String effectiveKind(WikiPage p) {
+        return (p.getKind() == null || p.getKind().isBlank()) ? "doc" : p.getKind();
     }
 
     private boolean matches(WikiPage p, String query, MatchMode m) {

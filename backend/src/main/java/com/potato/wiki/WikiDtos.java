@@ -9,7 +9,8 @@ record WikiPageRequest(
         String parentPath,
         String content,
         String category,
-        List<String> tags) {
+        List<String> tags,
+        String kind) {
 }
 
 /** 整目录移动/重命名请求:把 fromPrefix 子树整体迁到 toPrefix。 */
