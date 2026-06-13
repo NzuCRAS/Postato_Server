@@ -32,6 +32,7 @@ export default function AppLayout() {
             { key: '/projects', label: '项目' },
             { key: '/requirements', label: '需求' },
             { key: '/wiki', label: '知识库' },
+            { key: '/assets', label: '资产库' },
             { key: '/settings', label: '设置 / API Key' },
           ]}
         />

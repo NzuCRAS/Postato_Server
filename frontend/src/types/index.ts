@@ -178,6 +178,25 @@ export interface WikiPageItem {
   updatedAt: string
 }
 
+// ---- 资产库(OSS 可视化)----
+
+export interface AssetPageRef {
+  id: string
+  title: string
+  path: string
+}
+
+export interface AssetItem {
+  objectKey: string
+  name: string
+  url: string
+  contentType?: string
+  size: number
+  lastModified?: string
+  referencingPages: AssetPageRef[]
+  orphan: boolean
+}
+
 // ---- 项目(Project)+ 结构树 ----
 
 export interface ProjectRepo {

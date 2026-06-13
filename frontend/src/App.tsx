@@ -12,6 +12,7 @@ import RequirementEditPage from './pages/RequirementEditPage'
 import RequirementDetailPage from './pages/RequirementDetailPage'
 import WikiPage from './pages/WikiPage'
 import WikiEditPage from './pages/WikiEditPage'
+import AssetsPage from './pages/AssetsPage'
 import AppLayout from './components/AppLayout'
 
 function ProtectedRoutes() {
@@ -42,6 +43,7 @@ export default function App() {
             <Route path="/wiki" element={<WikiPage />} />
             <Route path="/wiki/new" element={<WikiEditPage />} />
             <Route path="/wiki/:id/edit" element={<WikiEditPage />} />
+            <Route path="/assets" element={<AssetsPage />} />
             <Route path="/settings" element={<SettingsPage />} />
           </Route>
         </Routes>
