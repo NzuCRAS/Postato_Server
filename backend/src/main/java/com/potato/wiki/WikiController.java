@@ -97,4 +97,20 @@ public class WikiController {
         storageService.delete(objectKey);
         return service.removeAsset(id, objectKey);
     }
+
+    /** 删除整页(连带删该页所有 MinIO 资产)。不存在 → 404。 */
+    @DeleteMapping("/pages/{id}")
+    public void delete(@AuthenticationPrincipal User user, @PathVariable String id) throws Exception {
+        permissionService.check(user, "wiki", "edit");
+        WikiPage page = service.delete(id);
+        for (WikiPage.Asset a : page.getAssets()) {
+            if (a.getObjectKey() != null && !a.getObjectKey().isBlank()) {
+                try {
+                    storageService.delete(a.getObjectKey());
+                } catch (Exception ignore) {
+                    // 资产对象删除尽力而为,不阻断页删除
+                }
+            }
+        }
+    }
 }

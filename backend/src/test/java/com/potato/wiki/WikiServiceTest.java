@@ -13,6 +13,7 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -252,5 +253,25 @@ class WikiServiceTest {
         when(repo.save(any())).thenAnswer(i -> i.getArgument(0));
         WikiPage p = service.removeAsset("id1", "wiki/id1/x-demo.html");
         assertThat(p.getAssets()).isEmpty();
+    }
+
+    // ---- delete ----
+
+    @Test
+    void delete_removes_existing_page() {
+        WikiPage existing = new WikiPage();
+        existing.setId("id1");
+        when(repo.findById("id1")).thenReturn(Optional.of(existing));
+        WikiPage p = service.delete("id1");
+        assertThat(p.getId()).isEqualTo("id1");
+        verify(repo).delete(existing);
+    }
+
+    @Test
+    void delete_throws_404_when_missing() {
+        when(repo.findById("nope")).thenReturn(Optional.empty());
+        assertThatThrownBy(() -> service.delete("nope"))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("不存在");
     }
 }

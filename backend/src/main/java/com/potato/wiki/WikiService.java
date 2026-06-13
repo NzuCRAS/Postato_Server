@@ -166,6 +166,13 @@ public class WikiService {
         return repository.save(page);
     }
 
+    /** 删除 wiki 页;返回被删的页(供调用方清理其 MinIO 资产)。不存在 → 404。 */
+    public WikiPage delete(String id) {
+        WikiPage page = get(id);
+        repository.delete(page);
+        return page;
+    }
+
     /**
      * 多模式检索。VECTOR 预留未实现(报 501)。默认排除 tmp 标签页(临时方案不污染知识结果)。
      * category 非空时按资产分类过滤(doc/asset/standard;存量空值视为 doc)。
