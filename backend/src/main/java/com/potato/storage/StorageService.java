@@ -2,17 +2,22 @@ package com.potato.storage;
 
 import com.potato.wiki.WikiPage;
 import io.minio.BucketExistsArgs;
+import io.minio.ListObjectsArgs;
 import io.minio.MakeBucketArgs;
 import io.minio.MinioClient;
 import io.minio.PutObjectArgs;
 import io.minio.RemoveObjectArgs;
+import io.minio.Result;
 import io.minio.SetBucketPolicyArgs;
+import io.minio.messages.Item;
 import jakarta.annotation.PostConstruct;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 
 /** 唯一封装对象存储(MinIO)的地方。上传走后端代理,开发期桶公开读。 */
@@ -68,5 +73,20 @@ public class StorageService {
 
     public void delete(String objectKey) throws Exception {
         client.removeObject(RemoveObjectArgs.builder().bucket(bucket).object(objectKey).build());
+    }
+
+    /** 列出桶内所有对象(递归);供资产库可视化与交叉引用扫描用。 */
+    public List<StoredObject> listObjects() throws Exception {
+        List<StoredObject> out = new ArrayList<>();
+        Iterable<Result<Item>> results = client.listObjects(
+                ListObjectsArgs.builder().bucket(bucket).recursive(true).build());
+        for (Result<Item> r : results) {
+            Item item = r.get();
+            if (item.isDir()) continue;
+            String key = item.objectName();
+            Instant lastModified = item.lastModified() == null ? null : item.lastModified().toInstant();
+            out.add(new StoredObject(key, item.size(), lastModified, publicEndpoint + "/" + bucket + "/" + key));
+        }
+        return out;
     }
 }
