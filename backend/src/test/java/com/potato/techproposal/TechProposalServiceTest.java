@@ -48,7 +48,7 @@ class TechProposalServiceTest {
         // 路径确定;wiki 页带默认标签 tech-proposal/tmp + 自定义标签
         assertThat(r.proposalPath()).isEqualTo("/tech-proposals/r1/node_4");
         verify(wikiService).upsertByPath(
-                eq("/tech-proposals/r1/node_4"), eq("请假表单方案"), eq("## 架构…"),
+                eq("/tech-proposals/r1/node_4"), eq("请假表单方案"), eq("## 架构…"), eq("doc"),
                 argThat(tags -> tags.contains("tech-proposal") && tags.contains("tmp") && tags.contains("leave")),
                 eq("/tech-proposals/r1"), eq("u1"));
 

@@ -42,7 +42,7 @@ public class TechProposalService {
                 if (t != null && !t.isBlank() && !merged.contains(t)) merged.add(t);
             }
         }
-        wikiService.upsertByPath(path, title, content, merged, "/tech-proposals/" + reqId, userId);
+        wikiService.upsertByPath(path, title, content, "doc", merged, "/tech-proposals/" + reqId, userId);
 
         DevPlan.Artifacts artifacts = new DevPlan.Artifacts();
         artifacts.setTechProposalId(path);

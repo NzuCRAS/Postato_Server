@@ -8,5 +8,6 @@ record WikiPageRequest(
         String path,
         String parentPath,
         String content,
+        String category,
         List<String> tags) {
 }
