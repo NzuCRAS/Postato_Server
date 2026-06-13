@@ -20,8 +20,9 @@
 ## 文件结构
 ```
 .claude/skills/potato/
-├── SKILL.md                 # L1 始终轻量:frontmatter + 主决策树 + 执行后自查
+├── SKILL.md                 # L1 始终轻量:frontmatter + 一轮闭环显式流程 + 执行后自查
 └── references/              # L2 按需加载
+    ├── mcp-toolbox.md       # 可调用的 MCP 能力全清单(15 工具,按需求/知识/进度树/项目结构树分组 + 何时用)
     ├── board-injection.md   # category 四板块(standard/asset/experience/doc)注入时机与方式
     ├── herness-flow.md      # 各步 MCP 工具参数细节 + 一节点一 commit + actor 渠道
     ├── promotion.md         # tmp 技术方案 → experience 晋升(去 tmp + 设 category + 改 path)
@@ -35,14 +36,16 @@
 
 **正文(总-分):**
 - **总(核心规则)**:你是遵循平台 Herness 流程的 AI 开发者;每个开发任务走下面的回路;**平台会用软警告 + blocked 硬校验顶回不合规的步骤,别绕**。
-- **主决策树骨架**(细节下沉 references):
-  1. **读** → `get_requirement_detail`;有 `open_corrections` 先据其调整(→ `corrections.md`)。
-  2. **注规范** → `search_knowledge(category="standard")` 必读;`(category="asset")` 取可复用清单(→ `board-injection.md`)。
-  3. **拿不准** → `search_knowledge(category="experience")` 触发检索先验经验。
-  4. **判分支**:复杂 / 需求驱动 → `write_tech_proposal(mark_in_progress)` 文档先行;简单 → 直接下一步。
-  5. **建/拆树** → `create_dev_plan`(module_ref/验收/related_docs/repo)或 `add_dev_plan_nodes`。
-  6. **逐叶子**:`in_progress`(log_detail 写为什么)→ 编码 → 一个 commit → done 前本地验证(编译/测试/lint)→ `update done`(commit + verifications + 勾验收);遇阻 `blocked` + 原因。
-  7. **处理 warnings**:补产物/验证/勾验收,或 `log_detail` 说明豁免。
+- **一轮闭环的显式流程**(每步:动作 → 调用的 MCP 能力 → 对应《关于一次完整的闭环设计》支柱;参数细节下沉 references。**这条流程就是八支柱的可执行化**):
+  1. **弄清需求** → `get_requirement_detail`(structured/验收/dev_plan/`open_corrections`/项目级+需求级 doc_links);有未解决纠偏先据其调整(→`corrections.md`)。〔业务需求〕
+  2. **弄清代码基础与架构约束** → `get_project_detail` / `get_architecture`(读业务域结构树、`related_code` glob、impl_status),据此打开实际代码摸清现状与既有模式。〔项目架构与技术约束〕
+  3. **注入代码规范** → `search_knowledge(category="standard")` 必读(接口契约 / 数据模型 / 代码风格)。〔代码规范〕
+  4. **查可复用资产** → `search_knowledge(category="asset")` 取清单,需要时取详情(含 demo / 资产 URL)。〔可复用代码〕
+  5. **(拿不准时)检索先验经验** → `search_knowledge(category="experience", q=...)` 触发式。〔隐式经验〕
+  6. **制定实现计划** → 复杂 / 需求驱动先 `write_tech_proposal(mark_in_progress)` 文档先行;再 `create_dev_plan`(module_ref/验收/related_docs/repo)/`add_dev_plan_nodes` 拆树(粒度≈一个 commit)。〔任务拆分〕
+  7. **逐叶子实现** → `update_dev_plan_node(in_progress, log_detail=为什么)` → 编码(遵第 3 步规范、复用第 4 步资产)→ 一个 commit → done 前本地验证(编译/测试/lint)→ `update_dev_plan_node(done, commit, verifications, 勾验收)`;遇阻 `blocked` + 原因。〔验收标准 + 短反馈循环〕
+  8. **处理 warnings** → 平台软警告顶回:补产物 / 验证 / 勾验收,或 `log_detail` 说明豁免。〔协作纠偏〕
+  9. **收尾沉淀 + 回标** → `write_knowledge(category=experience)` 落 `/experience/` 沉淀经验;`relate_requirement_arch` 回标结构树叶子 impl_status。〔知识沉淀〕
 - **执行后自查清单**(强制反射节点,踩在平台 warnings 上):
   - [ ] 每个 done 节点有 pass 的 verification?
   - [ ] 验收点都勾了 / 未勾的说明了?一节点≈一 commit 且挂上了?
@@ -51,6 +54,7 @@
   - [ ] 注入的规范真遵守了 / 可复用件真复用了?
 
 ## references/ (L2,按需加载)
+- **mcp-toolbox.md**:可调用的 **MCP 能力全清单**(15 工具),按 需求/知识 · 进度树 · 项目/结构树 分组,每个写明「做什么 + 何时用」——让 AI 清楚自己有哪些「手」,流程各步按需查这里取准确工具与参数。
 - **board-injection.md**:四 category(standard 开工必读全量 / asset 注入清单后按需取详情 / experience 触发式检索 / doc 兜底)+ 注入时机。
 - **herness-flow.md**:`create_dev_plan`/`update_dev_plan_node`/`add_dev_plan_nodes` 参数细节、一节点一 commit、`actor` 由认证渠道推断、commit 链接由 repo.url+sha 拼。
 - **promotion.md**:晋升 = 去 `tmp` + 设正式 category + 改 path(`/tech-proposals/...` → `/experience/<seg>`);经 `write_knowledge` 按新 path upsert。
@@ -74,7 +78,7 @@ SKILL.md 的决策树/自查**逐条镜像**平台 `computeWarnings`:done 无 pa
 - **description 触发率**:should-trigger(「帮我实现这个需求」)/ should-not-trigger(「解释这段代码」)样本校准,关注误触发/漏触发边界。
 
 ## 本期范围 / 非目标
-- **做**:`.claude/skills/potato/` 的 SKILL.md(决策树 + 自查)+ 5 个 references;CLAUDE.md 瘦身为指针;知识库 `/agent/herness-contract` 指向 skill;一轮 eval 设计。
+- **做**:`.claude/skills/potato/` 的 SKILL.md(一轮闭环显式九步流程 + 自查)+ 6 个 references(含 mcp-toolbox 工具全清单);CLAUDE.md 瘦身为指针;知识库 `/agent/herness-contract` 指向 skill;一轮 eval 设计。
 - **不做(后续)**:`scripts/` 确定性脚本、产品级分发(skills.sh/知识库分发)、需求分级 E1 自适应、把 skill「翻译」成专用 agent。
 
 ## 验证
