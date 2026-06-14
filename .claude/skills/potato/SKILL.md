@@ -9,6 +9,15 @@ description: 在 Potato 平台上做开发任务时遵循的标准作业流程(S
 
 完整可调用的 MCP 能力清单见 `references/mcp-toolbox.md`;各步细节按需查对应 reference。
 
+## 全程执行文档(边走边记,贯穿始终)
+
+**开工第一件事**:在 `.potato/runs/<requirement_id>-<开工时间>.md` 建一份**执行文档**(模板见 `references/run-log.md`),先写头部 + 开工分流结论。
+
+- 它是本轮执行的**全链路轨迹**:像 COT 一样让你边走边自检,也给用户一份可查证、可优化的交代。**区别于「执行计划」**(那是事前写定要改什么);执行文档记录**实际怎么走的**。
+- **全链路粒度逐段追加**:每走完一个 SOP 步骤(下方分流 + 九步)、每完成一个 dev_plan 叶子节点,就把结论**追加进本地文件**——本地文件随时是最新草稿。
+- 没把握 / 跳过 / 豁免的步骤**如实写原因**,不补全不美化(自检的价值在于诚实)。
+- **跑完 或 中断**(任务结束 / 用户喊停 / 节点 blocked / 会话将尽)→ `write_knowledge(category="runlog", path="/runs/<requirement_id>/<run-id>", content=本地md全文)` **回写平台**,状态栏标「已完成 / 中断(原因)」。runlog 默认不污染知识检索。
+
 ## 开工先分流(按 `tier`,仅供参考)
 
 需求带 `tier`(创建时选,`Large`/`Medium`/`Small`,**仅供参考**,可按判断调整),据此定流程强度:
@@ -40,6 +49,7 @@ description: 在 Potato 平台上做开发任务时遵循的标准作业流程(S
 9. **收尾沉淀 + 回标(必做)** —
    - 可复用经验 → `write_knowledge(category="experience")` 落 `/experience/…`;开发伴生的技术方案要转正,见 `references/promotion.md`。
    - 需求完成 → `relate_requirement_arch` 把需求关联并回标其落地的结构树**叶子**业务模块 impl_status。
+   - **回写执行文档** → 把全程记录的 `.potato/runs/…md` 经 `write_knowledge(category="runlog")` 写回平台。
 
 ## 执行后自查(完成前对照,逐条过)
 
@@ -49,6 +59,7 @@ description: 在 Potato 平台上做开发任务时遵循的标准作业流程(S
 - [ ] 可复用经验**沉淀**了(write_knowledge category=experience)?
 - [ ] 需求完成**回标**结构树叶子 impl_status 了(relate_requirement_arch)?
 - [ ] 第 3 步注入的规范真遵守了 / 第 4 步资产真复用了?
+- [ ] **执行文档全程记了、已回写平台**(write_knowledge category=runlog)?
 
 ## 不可协商(平台约定)
 
@@ -56,3 +67,4 @@ description: 在 Potato 平台上做开发任务时遵循的标准作业流程(S
 - 前端**视图/逻辑分离**(api/ 纯 HTTP、features/useXxx 逻辑、pages|components 只渲染)。
 - 容器内验证:`docker compose exec -T backend mvn ...`、前端/MCP `npx tsc --noEmit`;改后端 `docker compose restart backend`。
 - 非交互推送 `GIT_TERMINAL_PROMPT=0 git push`;commit 末尾保留 `Co-Authored-By`。
+- 执行文档落 `.potato/runs/`(**已 gitignore,不进版本库**);回写平台用 `write_knowledge(category="runlog")`,落 `/runs/<requirement_id>/…`。

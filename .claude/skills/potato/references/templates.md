@@ -1,5 +1,7 @@
 # 模板
 
+> 执行文档(run log)模板单列在 `references/run-log.md`(贯穿全程边走边记 + 回写)。
+
 ## 技术方案(write_tech_proposal 的 content)
 ```
 ## 引用的知识库文档

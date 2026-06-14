@@ -32,3 +32,6 @@ Thumbs.db
 
 # 一次性脚本残留
 mcp-server/_bootstrap.mjs
+
+# potato 执行文档(run log)本地草稿,不进版本库
+.potato/runs/
