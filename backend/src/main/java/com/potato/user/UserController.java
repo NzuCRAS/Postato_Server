@@ -1,12 +1,18 @@
 package com.potato.user;
 
+import com.potato.permission.PermissionService;
 import com.potato.user.User.ApiKey;
+import com.potato.user.UserDtos.CreateUserRequest;
+import com.potato.user.UserDtos.ResetPasswordRequest;
+import com.potato.user.UserDtos.UpdateFunctionsRequest;
+import com.potato.user.UserDtos.UserView;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
@@ -24,10 +30,57 @@ import java.util.UUID;
 public class UserController {
 
     private final UserRepository userRepository;
+    private final UserService userService;
+    private final PermissionService permissionService;
 
-    public UserController(UserRepository userRepository) {
+    public UserController(UserRepository userRepository, UserService userService, PermissionService permissionService) {
         this.userRepository = userRepository;
+        this.userService = userService;
+        this.permissionService = permissionService;
     }
+
+    // ---- admin 用户管理 ----
+
+    /** 列出所有用户(脱敏)。 */
+    @GetMapping
+    public List<UserView> list(@AuthenticationPrincipal User user) {
+        permissionService.check(user, "user", "view");
+        return userService.list().stream().map(UserView::of).toList();
+    }
+
+    /** 新建用户。 */
+    @PostMapping
+    public UserView create(@AuthenticationPrincipal User user, @RequestBody CreateUserRequest req) {
+        permissionService.check(user, "user", "create");
+        return UserView.of(userService.create(req.username(), req.password(), req.functions()));
+    }
+
+    /** 改某用户职能。 */
+    @PutMapping("/{id}")
+    public UserView updateFunctions(@AuthenticationPrincipal User user, @PathVariable String id,
+                                    @RequestBody UpdateFunctionsRequest req) {
+        permissionService.check(user, "user", "update");
+        return UserView.of(userService.updateFunctions(id, req.functions()));
+    }
+
+    /** 重置某用户密码。 */
+    @PutMapping("/{id}/password")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void resetPassword(@AuthenticationPrincipal User user, @PathVariable String id,
+                              @RequestBody ResetPasswordRequest req) {
+        permissionService.check(user, "user", "update");
+        userService.resetPassword(id, req.password());
+    }
+
+    /** 删除某用户。 */
+    @DeleteMapping("/{id}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void delete(@AuthenticationPrincipal User user, @PathVariable String id) {
+        permissionService.check(user, "user", "delete");
+        userService.delete(id, user.getId());
+    }
+
+    // ---- 自助(当前登录用户)----
 
     /** 当前登录用户信息(API Key 仅返回脱敏前缀) */
     @GetMapping("/me")

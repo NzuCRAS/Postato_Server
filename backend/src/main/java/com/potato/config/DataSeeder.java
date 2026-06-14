@@ -88,28 +88,39 @@ public class DataSeeder implements CommandLineRunner {
         log.info("==> Seeded default project (id=default).");
     }
 
+    /** 幂等补齐权限规则:逐条按 (resource,action) 缺失才插入,不覆盖已存在/被在线编辑过的规则。 */
     private void seedPermissionRules() {
-        if (permissionRuleRepository.count() > 0) {
-            return;
+        int before = (int) permissionRuleRepository.count();
+        upsertRule("requirement", "view", "development", "testing", "product");
+        upsertRule("requirement", "create", "product");
+        upsertRule("requirement", "edit_structured", "product");
+        upsertRule("requirement", "update_status", "product");
+        upsertRule("wiki", "read", "development", "testing", "product");
+        upsertRule("wiki", "edit", "development", "product");
+        upsertRule("dev_plan", "create", "development");
+        upsertRule("dev_plan", "update", "development");
+        upsertRule("dev_plan", "comment", "development", "testing", "product");
+        upsertRule("project", "view", "development", "testing", "product");
+        upsertRule("project", "create", "product");
+        upsertRule("project", "edit", "product");
+        upsertRule("arch", "edit_management", "development", "product");
+        upsertRule("arch", "sync", "development");
+        // 用户管理(仅 admin;admin 本就豁免,规则表达意图并为将来非 admin 留口)
+        upsertRule("user", "view", "admin");
+        upsertRule("user", "create", "admin");
+        upsertRule("user", "update", "admin");
+        upsertRule("user", "delete", "admin");
+        int added = (int) permissionRuleRepository.count() - before;
+        if (added > 0) {
+            log.info("==> Seeded {} new permission rules (idempotent top-up).", added);
         }
-        List<PermissionRule> rules = List.of(
-                rule("requirement", "view", "development", "testing", "product"),
-                rule("requirement", "create", "product"),
-                rule("requirement", "edit_structured", "product"),
-                rule("requirement", "update_status", "product"),
-                rule("wiki", "read", "development", "testing", "product"),
-                rule("wiki", "edit", "development", "product"),
-                rule("dev_plan", "create", "development"),
-                rule("dev_plan", "update", "development"),
-                rule("dev_plan", "comment", "development", "testing", "product"),
-                rule("project", "view", "development", "testing", "product"),
-                rule("project", "create", "product"),
-                rule("project", "edit", "product"),
-                rule("arch", "edit_management", "development", "product"),
-                rule("arch", "sync", "development")
-        );
-        permissionRuleRepository.saveAll(rules);
-        log.info("==> Seeded {} permission rules.", rules.size());
+    }
+
+    /** (resource,action) 不存在才插入。 */
+    private void upsertRule(String resource, String action, String... functions) {
+        if (permissionRuleRepository.findByResourceAndAction(resource, action).isEmpty()) {
+            permissionRuleRepository.save(rule(resource, action, functions));
+        }
     }
 
     private PermissionRule rule(String resource, String action, String... functions) {
