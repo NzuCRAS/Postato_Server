@@ -178,6 +178,23 @@ export interface WikiPageItem {
   updatedAt: string
 }
 
+// ---- 用户 / 权限管理(admin)----
+
+export interface UserAdminItem {
+  id: string
+  username: string
+  functions: string[]
+  apiKeyCount: number
+  createdAt?: string
+}
+
+export interface PermissionRuleItem {
+  id: string
+  resource: string
+  action: string
+  requiredFunctions: string[]
+}
+
 // ---- 资产库(OSS 可视化)----
 
 export interface AssetPageRef {
