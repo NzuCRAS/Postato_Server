@@ -11,12 +11,13 @@ description: 在 Potato 平台上做开发任务时遵循的标准作业流程(S
 
 ## 全程执行文档(边走边记,贯穿始终)
 
-**开工第一件事**:在 `.potato/runs/<requirement_id>-<开工时间>.md` 建一份**执行文档**(模板见 `references/run-log.md`),先写头部 + 开工分流结论。
+**开工第一件事**:在 `.potato/runs/<可读需求简名>-run<N>.md` 建一份**执行文档**(模板见 `references/run-log.md`),先写头部 + 开工分流结论。
 
 - 它是本轮执行的**全链路轨迹**:像 COT 一样让你边走边自检,也给用户一份可查证、可优化的交代。**区别于「执行计划」**(那是事前写定要改什么);执行文档记录**实际怎么走的**。
 - **全链路粒度逐段追加**:每走完一个 SOP 步骤(下方分流 + 九步)、每完成一个 dev_plan 叶子节点,就把结论**追加进本地文件**——本地文件随时是最新草稿。
 - 没把握 / 跳过 / 豁免的步骤**如实写原因**,不补全不美化(自检的价值在于诚实)。
-- **跑完 或 中断**(任务结束 / 用户喊停 / 节点 blocked / 会话将尽)→ `write_knowledge(category="runlog", path="/runs/<requirement_id>/<run-id>", content=本地md全文)` **回写平台**,状态栏标「已完成 / 中断(原因)」。runlog 默认不污染知识检索。
+- **跑完 或 中断**(任务结束 / 用户喊停 / 节点 blocked / 会话将尽)→ `write_knowledge(category="runlog", path="/runs/<可读需求简名>-run<N>", content=本地md全文)` **回写平台**,状态栏标「已完成 / 中断(原因)」。runlog 默认不污染知识检索。
+- **路径用可读名,需求/节点编号写进文档内容、不入 wiki 路径**(编号对人不可读)——runlog、技术方案(`write_tech_proposal` 自动用可读 title 作 path)同理。
 
 ## 开工先分流(按 `tier`,仅供参考)
 
@@ -67,4 +68,5 @@ description: 在 Potato 平台上做开发任务时遵循的标准作业流程(S
 - 前端**视图/逻辑分离**(api/ 纯 HTTP、features/useXxx 逻辑、pages|components 只渲染)。
 - 容器内验证:`docker compose exec -T backend mvn ...`、前端/MCP `npx tsc --noEmit`;改后端 `docker compose restart backend`。
 - 非交互推送 `GIT_TERMINAL_PROMPT=0 git push`;commit 末尾保留 `Co-Authored-By`。
-- 执行文档落 `.potato/runs/`(**已 gitignore,不进版本库**);回写平台用 `write_knowledge(category="runlog")`,落 `/runs/<requirement_id>/…`。
+- 执行文档落 `.potato/runs/`(**已 gitignore,不进版本库**);回写平台用 `write_knowledge(category="runlog")`,落 `/runs/<可读需求简名>-run<N>`。
+- wiki 路径用**可读名**,需求/节点编号写文档内、不当目录(编号对人不可读)。技术方案 path = `/tech-proposals/<title>`、runlog path = `/runs/<可读名>`。

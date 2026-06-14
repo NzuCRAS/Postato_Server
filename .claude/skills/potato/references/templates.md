@@ -3,7 +3,11 @@
 > 执行文档(run log)模板单列在 `references/run-log.md`(贯穿全程边走边记 + 回写)。
 
 ## 技术方案(write_tech_proposal 的 content)
+
+> 页 path 由后端自动用可读 title 生成(`/tech-proposals/<title>`,不含编号);**关联的 requirement_id / node_id 写进正文**,别塞进路径。
 ```
+## 关联
+(requirement_id / node_id —— 编号写文档内,不入路径)
 ## 引用的知识库文档
 (列出第 3/4/5 步注入/检索到的 standard/asset/experience 页 path)
 ## 实现方案

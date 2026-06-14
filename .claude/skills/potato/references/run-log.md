@@ -1,13 +1,14 @@
 # 执行文档(run log)模板
 
-> LLM 走 potato 闭环时**开工即建**本地文件 `.potato/runs/<requirement_id>-<开工时间>.md`,按本模板**边执行边逐段追加**(全链路粒度:分流 + 九步 + 每个 dev_plan 节点);**跑完或中断**时 `write_knowledge(category="runlog", path="/runs/<requirement_id>/<run-id>")` 回写平台。
+> LLM 走 potato 闭环时**开工即建**本地文件 `.potato/runs/<可读需求简名>-run<N>.md`(用**可读名**,别用需求编号),按本模板**边执行边逐段追加**(全链路粒度:分流 + 九步 + 每个 dev_plan 节点);**跑完或中断**时 `write_knowledge(category="runlog", path="/runs/<可读需求简名>-run<N>")` 回写平台(path 用**可读名**,需求编号写进文档头部、不入路径)。
 >
 > 它是过程轨迹(COT 自检 + 给人交代),区别于事前写定改动的「执行计划」。**没把握/没做到的步骤如实写「跳过/豁免 + 原因」,不补全不美化。**
 
 ```markdown
-# 执行文档 — <需求标题> (<requirement_id>)
+# 执行文档 — <需求标题> · run<N>
 
-- 开工时间 / 轮次:<time>
+- requirement_id:<id>(编号写文档内,不入 wiki 路径)
+- 开工时间:<time>
 - 类型 / tier:<feature|improvement|bugfix> / <Large|Medium|Small>
 - 关联仓库 / 分支:<repo> / <branch>
 - 状态:进行中 | 已完成 | 中断(<原因>)
@@ -62,5 +63,5 @@
 
 ## 回写记录
 - 回写时机:跑完 | 中断
-- 平台 path:/runs/<requirement_id>/<run-id>(category=runlog)
+- 平台 path:/runs/<可读需求简名>-run<N>(category=runlog;需求编号见头部,不入路径)
 ```
