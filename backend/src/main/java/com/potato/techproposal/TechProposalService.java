@@ -26,13 +26,17 @@ public class TechProposalService {
     }
 
     /**
-     * 在 reqId/nodeId 上创建(或更新)技术方案页,并把路径写回节点。
+     * 为 reqId/nodeId 创建(或更新)技术方案页,并把路径写回节点。
+     * 页 path 用可读的 title(而非需求/节点编号,编号对人无意义);靠 title 区分,
+     * 同 title 重复调用走 upsert 更新。reqId/nodeId 经 artifacts.tech_proposal_id 与节点关联留痕。
      * @param actor 操作者(ai/human,按认证渠道)
      * @param userId 当前用户 id(wiki 作者)
      */
     public Result create(String reqId, String nodeId, String title, String content,
                          List<String> tags, boolean markInProgress, String actor, String userId) {
-        String path = "/tech-proposals/" + reqId + "/" + nodeId;
+        // 用可读 title 作 path(/ 换 - 避免被切成多层目录),不再把编号塞进路径
+        String safeTitle = (title == null || title.isBlank()) ? "untitled" : title.trim().replace('/', '-');
+        String path = "/tech-proposals/" + safeTitle;
 
         List<String> merged = new ArrayList<>();
         merged.add("tech-proposal");
@@ -42,7 +46,7 @@ public class TechProposalService {
                 if (t != null && !t.isBlank() && !merged.contains(t)) merged.add(t);
             }
         }
-        wikiService.upsertByPath(path, title, content, "doc", merged, "/tech-proposals/" + reqId, userId);
+        wikiService.upsertByPath(path, title, content, "doc", merged, "/tech-proposals", userId);
 
         DevPlan.Artifacts artifacts = new DevPlan.Artifacts();
         artifacts.setTechProposalId(path);
