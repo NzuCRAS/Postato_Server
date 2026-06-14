@@ -12,6 +12,7 @@ export default function AppLayout() {
   const { projects, currentId, setCurrentId } = useProjects()
   const navigate = useNavigate()
   const location = useLocation()
+  const isAdmin = user?.functions.includes('admin') ?? false
 
   const selectedKey = location.pathname.startsWith('/requirements')
     ? '/requirements'
@@ -33,6 +34,12 @@ export default function AppLayout() {
             { key: '/requirements', label: '需求' },
             { key: '/wiki', label: '知识库' },
             { key: '/assets', label: '资产库' },
+            ...(isAdmin
+              ? [
+                  { key: '/users', label: '用户管理' },
+                  { key: '/permissions', label: '权限规则' },
+                ]
+              : []),
             { key: '/settings', label: '设置 / API Key' },
           ]}
         />

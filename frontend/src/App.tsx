@@ -13,6 +13,8 @@ import RequirementDetailPage from './pages/RequirementDetailPage'
 import WikiPage from './pages/WikiPage'
 import WikiEditPage from './pages/WikiEditPage'
 import AssetsPage from './pages/AssetsPage'
+import UsersPage from './pages/UsersPage'
+import PermissionsPage from './pages/PermissionsPage'
 import AppLayout from './components/AppLayout'
 
 function ProtectedRoutes() {
@@ -44,6 +46,8 @@ export default function App() {
             <Route path="/wiki/new" element={<WikiEditPage />} />
             <Route path="/wiki/:id/edit" element={<WikiEditPage />} />
             <Route path="/assets" element={<AssetsPage />} />
+            <Route path="/users" element={<UsersPage />} />
+            <Route path="/permissions" element={<PermissionsPage />} />
             <Route path="/settings" element={<SettingsPage />} />
           </Route>
         </Routes>
