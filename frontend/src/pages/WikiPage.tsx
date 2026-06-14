@@ -17,6 +17,7 @@ const CATEGORY_OPTIONS = [
   { value: 'asset', label: 'asset 可复用' },
   { value: 'standard', label: 'standard 规范' },
   { value: 'experience', label: 'experience 经验' },
+  { value: 'runlog', label: 'runlog 执行文档' },
 ]
 
 export default function WikiPage() {

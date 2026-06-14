@@ -57,9 +57,9 @@ export function registerTools(server: McpServer, apiKey: string | undefined): vo
       include_tmp: z.boolean().optional().describe('是否纳入 tmp 临时页,默认 false'),
       limit: z.number().optional().describe('返回条数,默认 3'),
       category: z
-        .enum(['doc', 'asset', 'standard', 'experience'])
+        .enum(['doc', 'asset', 'standard', 'experience', 'runlog'])
         .optional()
-        .describe('按资产分类过滤:doc/asset/standard/experience'),
+        .describe('按资产分类过滤:doc/asset/standard/experience/runlog(runlog=执行文档,默认检索排除)'),
     },
     async ({ query, match_mode, include_tmp, limit, category }) => {
       try {
@@ -272,9 +272,9 @@ export function registerTools(server: McpServer, apiKey: string | undefined): vo
       tags: z.array(z.string()).optional(),
       parent_path: z.string().optional().describe('父级路径(目录树用)'),
       category: z
-        .enum(['doc', 'asset', 'standard', 'experience'])
+        .enum(['doc', 'asset', 'standard', 'experience', 'runlog'])
         .optional()
-        .describe('资产分类:doc(默认)/asset(可复用代码)/standard(代码规范)/experience(先验经验)'),
+        .describe('资产分类:doc(默认)/asset(可复用代码)/standard(代码规范)/experience(先验经验)/runlog(执行文档轨迹)'),
     },
     async ({ path, title, content, tags, parent_path, category }) => {
       try {
