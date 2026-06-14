@@ -147,6 +147,25 @@ class WikiServiceTest {
         assertThat(titles(service.search("缓存", MatchMode.FUZZY, false, "doc"))).containsExactly("普通页");
     }
 
+    @Test
+    void create_accepts_runlog_category() {
+        when(repo.save(any())).thenAnswer(i -> i.getArgument(0));
+        WikiPage p = service.create("执行文档", "/runs/r1/run-1", null, "轨迹", "runlog", null, null, "u");
+        assertThat(p.getCategory()).isEqualTo("runlog");
+    }
+
+    @Test
+    void search_excludes_runlog_by_default_but_returns_when_filtered() {
+        WikiPage run = page("执行文档", "缓存相关执行轨迹", List.of("run"));
+        run.setCategory("runlog");
+        WikiPage doc = page("普通页", "缓存说明", List.of("cache"));
+        when(repo.findAllByOrderByPathAsc()).thenReturn(List.of(run, doc));
+        // 默认(category=null)不返回 runlog,避免执行文档污染检索
+        assertThat(titles(service.search("缓存", MatchMode.FUZZY, false, null))).containsExactly("普通页");
+        // 显式 category=runlog 才返回
+        assertThat(titles(service.search("缓存", MatchMode.FUZZY, false, "runlog"))).containsExactly("执行文档");
+    }
+
     // ---- update 改 path(晋升用) ----
 
     @Test

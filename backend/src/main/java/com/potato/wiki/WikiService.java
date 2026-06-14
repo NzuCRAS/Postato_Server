@@ -14,7 +14,7 @@ public class WikiService {
 
     private static final String DEFAULT_PROJECT = "default";
     static final String DEFAULT_CATEGORY = "doc";
-    private static final Set<String> VALID_CATEGORY = Set.of("doc", "asset", "standard", "experience");
+    private static final Set<String> VALID_CATEGORY = Set.of("doc", "asset", "standard", "experience", "runlog");
     private static final Set<String> VALID_KIND = Set.of("folder", "doc");
 
     private final WikiPageRepository repository;
@@ -199,6 +199,8 @@ public class WikiService {
         List<WikiPage> result = new ArrayList<>();
         for (WikiPage p : repository.findAllByOrderByPathAsc()) {
             if (!includeTmp && p.getTags() != null && p.getTags().contains("tmp")) continue;
+            // 执行文档(runlog)是过程轨迹,不污染知识检索;仅显式 category=runlog 时返回
+            if (filterCat == null && "runlog".equals(effectiveCategory(p))) continue;
             if (filterCat != null && !filterCat.equals(effectiveCategory(p))) continue;
             if (query.isEmpty() || matches(p, query, m)) result.add(p);
         }
@@ -215,7 +217,7 @@ public class WikiService {
     private String validateCategory(String category) {
         String c = category.trim();
         if (!VALID_CATEGORY.contains(c)) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "非法 category: " + category + "(允许 doc/asset/standard)");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "非法 category: " + category + "(允许 doc/asset/standard/experience/runlog)");
         }
         return c;
     }
