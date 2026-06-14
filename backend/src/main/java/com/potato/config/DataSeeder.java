@@ -110,6 +110,9 @@ public class DataSeeder implements CommandLineRunner {
         upsertRule("user", "create", "admin");
         upsertRule("user", "update", "admin");
         upsertRule("user", "delete", "admin");
+        // 权限规则管理(仅 admin)
+        upsertRule("permission", "view", "admin");
+        upsertRule("permission", "manage", "admin");
         int added = (int) permissionRuleRepository.count() - before;
         if (added > 0) {
             log.info("==> Seeded {} new permission rules (idempotent top-up).", added);
