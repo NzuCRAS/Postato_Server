@@ -37,7 +37,7 @@ export default function AppLayout() {
             ...(isAdmin
               ? [
                   { key: '/users', label: '用户管理' },
-                  { key: '/permissions', label: '权限规则' },
+                  { key: '/permissions', label: '权限管理' },
                 ]
               : []),
             { key: '/settings', label: '设置 / API Key' },

@@ -195,6 +195,13 @@ export interface PermissionRuleItem {
   requiredFunctions: string[]
 }
 
+/** 权限字典项(职能/资源/动作 通用)。 */
+export interface PermissionDefItem {
+  key: string
+  label: string
+  description?: string
+}
+
 // ---- 资产库(OSS 可视化)----
 
 export interface AssetPageRef {
