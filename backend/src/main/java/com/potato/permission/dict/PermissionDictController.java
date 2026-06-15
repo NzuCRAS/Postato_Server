@@ -66,7 +66,7 @@ public class PermissionDictController {
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void deleteFunction(@AuthenticationPrincipal User user, @PathVariable String key) {
         permissionService.check(user, "permission", "manage");
-        service.delete(functionRepo, key);
+        service.deleteFunction(functionRepo, key);
     }
 
     // ---- 资源 resources ----
@@ -96,7 +96,7 @@ public class PermissionDictController {
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void deleteResource(@AuthenticationPrincipal User user, @PathVariable String key) {
         permissionService.check(user, "permission", "manage");
-        service.delete(resourceRepo, key);
+        service.deleteResource(resourceRepo, key);
     }
 
     // ---- 动作 actions ----
@@ -126,6 +126,6 @@ public class PermissionDictController {
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void deleteAction(@AuthenticationPrincipal User user, @PathVariable String key) {
         permissionService.check(user, "permission", "manage");
-        service.delete(actionRepo, key);
+        service.deleteAction(actionRepo, key);
     }
 }

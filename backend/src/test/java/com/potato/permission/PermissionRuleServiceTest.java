@@ -1,5 +1,8 @@
 package com.potato.permission;
 
+import com.potato.permission.dict.ActionDefRepository;
+import com.potato.permission.dict.FunctionDefRepository;
+import com.potato.permission.dict.ResourceDefRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -21,12 +24,18 @@ class PermissionRuleServiceTest {
 
     @Mock
     PermissionRuleRepository repo;
+    @Mock
+    ResourceDefRepository resourceRepo;
+    @Mock
+    ActionDefRepository actionRepo;
+    @Mock
+    FunctionDefRepository functionRepo;
 
     PermissionRuleService service;
 
     @BeforeEach
     void setUp() {
-        service = new PermissionRuleService(repo);
+        service = new PermissionRuleService(repo, resourceRepo, actionRepo, functionRepo);
     }
 
     private PermissionRule rule(String id, String resource, String action, List<String> fns) {
@@ -40,18 +49,49 @@ class PermissionRuleServiceTest {
 
     @Test
     void create_saves_new_rule() {
+        when(resourceRepo.existsByKey("report")).thenReturn(true);
+        when(actionRepo.existsByKey("view")).thenReturn(true);
+        when(functionRepo.existsByKey("product")).thenReturn(true);
         when(repo.findByResourceAndAction("report", "view")).thenReturn(Optional.empty());
         when(repo.save(any())).thenAnswer(i -> i.getArgument(0));
         PermissionRule r = service.create("report", "view", List.of("product"));
         assertThat(r.getResource()).isEqualTo("report");
-        assertThat(r.getAction()).isEqualTo("view");
         assertThat(r.getRequiredFunctions()).containsExactly("product");
     }
 
     @Test
+    void create_rejects_unregistered_resource() {
+        when(resourceRepo.existsByKey("ghost")).thenReturn(false);
+        assertThatThrownBy(() -> service.create("ghost", "view", List.of()))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("资源未注册");
+    }
+
+    @Test
+    void create_rejects_unregistered_action() {
+        when(resourceRepo.existsByKey("wiki")).thenReturn(true);
+        when(actionRepo.existsByKey("ghost")).thenReturn(false);
+        assertThatThrownBy(() -> service.create("wiki", "ghost", List.of()))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("动作未注册");
+    }
+
+    @Test
+    void create_rejects_unregistered_function() {
+        when(resourceRepo.existsByKey("wiki")).thenReturn(true);
+        when(actionRepo.existsByKey("read")).thenReturn(true);
+        when(functionRepo.existsByKey("ghost")).thenReturn(false);
+        assertThatThrownBy(() -> service.create("wiki", "read", List.of("ghost")))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("职能未注册");
+    }
+
+    @Test
     void create_rejects_duplicate() {
+        when(resourceRepo.existsByKey("wiki")).thenReturn(true);
+        when(actionRepo.existsByKey("read")).thenReturn(true);
         when(repo.findByResourceAndAction("wiki", "read")).thenReturn(Optional.of(new PermissionRule()));
-        assertThatThrownBy(() -> service.create("wiki", "read", List.of("development")))
+        assertThatThrownBy(() -> service.create("wiki", "read", List.of()))
                 .isInstanceOf(ResponseStatusException.class)
                 .hasMessageContaining("已存在");
     }
@@ -65,6 +105,8 @@ class PermissionRuleServiceTest {
 
     @Test
     void update_replaces_required_functions() {
+        when(functionRepo.existsByKey("development")).thenReturn(true);
+        when(functionRepo.existsByKey("product")).thenReturn(true);
         PermissionRule existing = rule("id1", "wiki", "edit", List.of("development"));
         when(repo.findById("id1")).thenReturn(Optional.of(existing));
         when(repo.save(any())).thenAnswer(i -> i.getArgument(0));

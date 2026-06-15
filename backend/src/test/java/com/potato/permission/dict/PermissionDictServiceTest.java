@@ -1,5 +1,9 @@
 package com.potato.permission.dict;
 
+import com.potato.permission.PermissionRule;
+import com.potato.permission.PermissionRuleRepository;
+import com.potato.user.User;
+import com.potato.user.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -7,6 +11,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -20,12 +25,16 @@ class PermissionDictServiceTest {
 
     @Mock
     FunctionDefRepository repo;
+    @Mock
+    PermissionRuleRepository ruleRepo;
+    @Mock
+    UserRepository userRepo;
 
     PermissionDictService service;
 
     @BeforeEach
     void setUp() {
-        service = new PermissionDictService();
+        service = new PermissionDictService(ruleRepo, userRepo);
     }
 
     private FunctionDef def(String key, String label) {
@@ -43,7 +52,7 @@ class PermissionDictServiceTest {
         when(repo.save(any())).thenAnswer(i -> i.getArgument(0));
         FunctionDef r = service.create(repo, input);
         assertThat(r.getKey()).isEqualTo("reviewer");
-        assertThat(r.getLabel()).isEqualTo("reviewer"); // label 缺省回落 key
+        assertThat(r.getLabel()).isEqualTo("reviewer");
     }
 
     @Test
@@ -82,10 +91,43 @@ class PermissionDictServiceTest {
     }
 
     @Test
-    void delete_removes_existing() {
-        FunctionDef existing = def("testing", "测试");
-        when(repo.findByKey("testing")).thenReturn(Optional.of(existing));
-        service.delete(repo, "testing");
+    void deleteFunction_rejects_when_used_by_user() {
+        User u = new User();
+        u.setFunctions(List.of("admin"));
+        when(ruleRepo.findAll()).thenReturn(List.of());
+        when(userRepo.findAll()).thenReturn(List.of(u));
+        assertThatThrownBy(() -> service.deleteFunction(repo, "admin"))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("不能删除");
+    }
+
+    @Test
+    void deleteFunction_rejects_when_used_by_rule() {
+        PermissionRule r = new PermissionRule();
+        r.setRequiredFunctions(List.of("product"));
+        when(ruleRepo.findAll()).thenReturn(List.of(r));
+        assertThatThrownBy(() -> service.deleteFunction(repo, "product"))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("不能删除");
+    }
+
+    @Test
+    void deleteFunction_deletes_when_unused() {
+        FunctionDef existing = def("reviewer", "评审");
+        when(ruleRepo.findAll()).thenReturn(List.of());
+        when(userRepo.findAll()).thenReturn(List.of());
+        when(repo.findByKey("reviewer")).thenReturn(Optional.of(existing));
+        service.deleteFunction(repo, "reviewer");
         verify(repo).delete(existing);
+    }
+
+    @Test
+    void deleteResource_rejects_when_used_by_rule() {
+        PermissionRule r = new PermissionRule();
+        r.setResource("wiki");
+        when(ruleRepo.findAll()).thenReturn(List.of(r));
+        assertThatThrownBy(() -> service.deleteResource(null, "wiki"))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("不能删除");
     }
 }
