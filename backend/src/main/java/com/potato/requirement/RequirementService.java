@@ -12,7 +12,7 @@ import java.util.Set;
 @Service
 public class RequirementService {
 
-    private static final Set<String> VALID_STATUSES = Set.of("draft", "clarifying", "confirmed", "deprecated");
+    private static final Set<String> VALID_STATUSES = Set.of("draft", "clarifying", "confirmed", "done", "deprecated");
     private static final Set<String> VALID_TYPES = Set.of("feature", "improvement", "bugfix");
     private static final Set<String> VALID_TIERS = Set.of("Large", "Medium", "Small");
     private static final String DEFAULT_TIER = "Medium";

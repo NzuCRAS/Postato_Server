@@ -220,4 +220,56 @@ class DevPlanServiceTest {
         assertThat(r.warnings()).noneMatch(w -> w.contains("验证"));
         assertThat(r.warnings()).anyMatch(w -> w.contains("子节点"));
     }
+
+    // ---- root 聚合 + 需求状态联动 ----
+
+    @Test
+    void root_aggregates_to_done_when_all_leaves_done() {
+        Requirement req = reqWithPlan(); // root + node_1(唯一叶)
+        service.updateNode("r1", "node_1",
+                new UpdateNodeRequest("done", null, null, null, null, null, null, null), "ai");
+        assertThat(req.getDevPlan().getRoot().getStatus()).isEqualTo("done");
+    }
+
+    @Test
+    void root_aggregates_to_in_progress_when_partial() {
+        Requirement req = reqWithPlan();
+        service.addNodes("r1", "node_1", List.of(
+                new NodeInput("A", null, null, null, null, null),
+                new NodeInput("B", null, null, null, null, null)));
+        // node_1 现在非叶,叶子为 node_2(A)、node_3(B)
+        service.updateNode("r1", "node_2",
+                new UpdateNodeRequest("done", null, null, null, null, null, null, null), "ai");
+        assertThat(req.getDevPlan().getRoot().getStatus()).isEqualTo("in_progress");
+    }
+
+    @Test
+    void create_transitions_requirement_draft_to_confirmed() {
+        Requirement req = new Requirement();
+        req.setId("r2");
+        req.setStatus("draft");
+        when(repo.findById("r2")).thenReturn(Optional.of(req));
+        when(repo.save(any())).thenAnswer(i -> i.getArgument(0));
+        service.create("r2", "需求二", null, List.of(new NodeInput("n", null, null, null, null, null)));
+        assertThat(req.getStatus()).isEqualTo("confirmed");
+    }
+
+    @Test
+    void requirement_done_when_root_done_and_reverts_on_reopen() {
+        Requirement req = new Requirement();
+        req.setId("r3");
+        req.setStatus("confirmed");
+        when(repo.findById("r3")).thenReturn(Optional.of(req));
+        when(repo.save(any())).thenAnswer(i -> i.getArgument(0));
+        service.create("r3", "需求三", null, List.of(new NodeInput("n", null, null, null, null, null)));
+        // 全节点 done → 需求 done
+        service.updateNode("r3", "node_1",
+                new UpdateNodeRequest("done", null, null, null, null, null, null, null), "ai");
+        assertThat(req.getStatus()).isEqualTo("done");
+        // 追加一个 todo 节点并触发 recompute → root 回退 → 需求 done 退回 confirmed
+        service.addNodes("r3", "node_root", List.of(new NodeInput("追加", null, null, null, null, null)));
+        service.updateNode("r3", "node_2",
+                new UpdateNodeRequest(null, null, "note", null, null, null, null, null), "ai");
+        assertThat(req.getStatus()).isEqualTo("confirmed");
+    }
 }

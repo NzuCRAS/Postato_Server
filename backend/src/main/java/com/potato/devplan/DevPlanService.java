@@ -53,6 +53,10 @@ public class DevPlanService {
         plan.setRoot(root);
 
         req.setDevPlan(plan);
+        // 开工建树即视需求进入开发:draft → confirmed
+        if ("draft".equals(req.getStatus())) {
+            req.setStatus("confirmed");
+        }
         req.setUpdatedAt(now);
         requirementRepository.save(req);
         return plan;
@@ -157,12 +161,56 @@ public class DevPlanService {
         }
 
         Instant now = Instant.now();
+        recomputeRootStatus(plan, actor);
+        syncRequirementStatus(req);
         plan.setUpdatedAt(now);
         req.setUpdatedAt(now);
         requirementRepository.save(req);
 
         warnings.addAll(computeWarnings(node));
         return new UpdateResult(node, warnings);
+    }
+
+    /** 需求状态随进度树根节点联动:root done → 需求 done;root 回退(非 done)而需求已 done → 退回 confirmed。 */
+    private void syncRequirementStatus(Requirement req) {
+        DevPlan plan = req.getDevPlan();
+        if (plan == null || plan.getRoot() == null) return;
+        String rootStatus = plan.getRoot().getStatus();
+        if ("done".equals(rootStatus)) {
+            if ("draft".equals(req.getStatus()) || "confirmed".equals(req.getStatus())) {
+                req.setStatus("done");
+            }
+        } else if ("done".equals(req.getStatus())) {
+            req.setStatus("confirmed");
+        }
+    }
+
+    /**
+     * 重算根节点 status:按所有叶子节点聚合——全 done→done、有任意非 todo(活跃/受阻/完成)→in_progress、全 todo→todo。
+     * 仅在 root 有子树时聚合(单节点树 root 自身即工作节点,状态由 updateNode 直管)。root 变化记一条 system 日志。
+     */
+    private void recomputeRootStatus(DevPlan plan, String actor) {
+        DevPlan.Node root = plan.getRoot();
+        if (root == null || root.getChildren().isEmpty()) return;
+        List<DevPlan.Node> leaves = collectLeaves(root, new ArrayList<>());
+        boolean allDone = leaves.stream().allMatch(n -> "done".equals(n.getStatus()));
+        boolean anyActive = leaves.stream().anyMatch(n -> !"todo".equals(n.getStatus()));
+        String agg = allDone ? "done" : (anyActive ? "in_progress" : "todo");
+        if (!agg.equals(root.getStatus())) {
+            String from = root.getStatus();
+            root.setStatus(agg);
+            root.getLog().add(log(actor, "status_change", "根节点随子节点聚合", null, from, agg, null));
+        }
+    }
+
+    /** 收集子树里所有叶子节点(无 children 的节点)。 */
+    private List<DevPlan.Node> collectLeaves(DevPlan.Node node, List<DevPlan.Node> acc) {
+        if (node.getChildren().isEmpty()) {
+            acc.add(node);
+        } else {
+            for (DevPlan.Node c : node.getChildren()) collectLeaves(c, acc);
+        }
+        return acc;
     }
 
     /** 新增纠偏(任何可查看者) */
