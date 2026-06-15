@@ -2,6 +2,7 @@ package com.potato.user;
 
 import com.potato.permission.PermissionService;
 import com.potato.user.User.ApiKey;
+import com.potato.user.UserDtos.ChangePasswordRequest;
 import com.potato.user.UserDtos.CreateUserRequest;
 import com.potato.user.UserDtos.ResetPasswordRequest;
 import com.potato.user.UserDtos.UpdateFunctionsRequest;
@@ -41,11 +42,13 @@ public class UserController {
 
     // ---- admin 用户管理 ----
 
-    /** 列出所有用户(脱敏)。 */
+    /** 列出用户:有 user/view(admin 豁免)→ 全部;否则只返自己(人人可见自己)。 */
     @GetMapping
     public List<UserView> list(@AuthenticationPrincipal User user) {
-        permissionService.check(user, "user", "view");
-        return userService.list().stream().map(UserView::of).toList();
+        if (permissionService.hasPermission(user, "user", "view")) {
+            return userService.list().stream().map(UserView::of).toList();
+        }
+        return List.of(UserView.of(user));
     }
 
     /** 新建用户。 */
@@ -81,6 +84,13 @@ public class UserController {
     }
 
     // ---- 自助(当前登录用户)----
+
+    /** 自助修改自己密码(校验旧密码)。任何登录用户可调。 */
+    @PutMapping("/me/password")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void changeMyPassword(@AuthenticationPrincipal User user, @RequestBody ChangePasswordRequest req) {
+        userService.changeOwnPassword(user.getId(), req.oldPassword(), req.newPassword());
+    }
 
     /** 当前登录用户信息(API Key 仅返回脱敏前缀) */
     @GetMapping("/me")

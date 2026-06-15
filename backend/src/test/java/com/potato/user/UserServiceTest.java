@@ -123,4 +123,27 @@ class UserServiceTest {
         service.delete("id1", "admin-id");
         verify(repo).delete(u1);
     }
+
+    @Test
+    void changeOwnPassword_updates_when_old_matches() {
+        User u1 = user("id1", List.of("development"));
+        u1.setPasswordHash("OLDHASH");
+        when(repo.findById("id1")).thenReturn(Optional.of(u1));
+        when(encoder.matches("old", "OLDHASH")).thenReturn(true);
+        when(encoder.encode("new")).thenReturn("NEWHASH");
+        when(repo.save(any())).thenAnswer(i -> i.getArgument(0));
+        service.changeOwnPassword("id1", "old", "new");
+        assertThat(u1.getPasswordHash()).isEqualTo("NEWHASH");
+    }
+
+    @Test
+    void changeOwnPassword_rejects_wrong_old() {
+        User u1 = user("id1", List.of("development"));
+        u1.setPasswordHash("OLDHASH");
+        when(repo.findById("id1")).thenReturn(Optional.of(u1));
+        when(encoder.matches("wrong", "OLDHASH")).thenReturn(false);
+        assertThatThrownBy(() -> service.changeOwnPassword("id1", "wrong", "new"))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("旧密码不正确");
+    }
 }

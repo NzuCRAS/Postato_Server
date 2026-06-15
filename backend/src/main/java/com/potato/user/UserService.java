@@ -71,6 +71,20 @@ public class UserService {
         repository.save(u);
     }
 
+    /** 自助改密:校验旧密码后改新密码。 */
+    public void changeOwnPassword(String id, String oldPassword, String newPassword) {
+        if (newPassword == null || newPassword.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "新密码必填");
+        }
+        User u = get(id);
+        if (!passwordEncoder.matches(oldPassword == null ? "" : oldPassword, u.getPasswordHash())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "旧密码不正确");
+        }
+        u.setPasswordHash(passwordEncoder.encode(newPassword));
+        u.setUpdatedAt(Instant.now());
+        repository.save(u);
+    }
+
     public void delete(String id, String currentUserId) {
         if (id.equals(currentUserId)) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "不能删除自己");
