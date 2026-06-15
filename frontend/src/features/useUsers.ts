@@ -12,10 +12,13 @@ export function useUsers() {
   const reload = useCallback(async () => {
     setLoading(true)
     try {
-      // 职能受控于职能字典(权限管理中心维护),用户管理只从中选
-      const [u, f] = await Promise.all([listUsers(), listDefs('functions')])
-      setUsers(u)
-      setFunctions(f)
+      // 用户列表人人可调(非 admin 只返自己);职能字典仅 admin 有权,故单独容错
+      setUsers(await listUsers())
+      try {
+        setFunctions(await listDefs('functions'))
+      } catch {
+        setFunctions([])
+      }
     } finally {
       setLoading(false)
     }

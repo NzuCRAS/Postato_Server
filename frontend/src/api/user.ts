@@ -34,6 +34,14 @@ export function deleteUser(id: string): Promise<void> {
   return request<void>(`/users/${encodeURIComponent(id)}`, { method: 'DELETE' })
 }
 
+/** 自助修改自己密码(验旧密码)。 */
+export function changeMyPassword(oldPassword: string, newPassword: string): Promise<void> {
+  return request<void>('/users/me/password', {
+    method: 'PUT',
+    body: JSON.stringify({ oldPassword, newPassword }),
+  })
+}
+
 // ---- 自助 API Key ----
 
 export function createApiKey(name: string): Promise<CreatedApiKey> {

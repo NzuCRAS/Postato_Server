@@ -34,12 +34,8 @@ export default function AppLayout() {
             { key: '/requirements', label: '需求' },
             { key: '/wiki', label: '知识库' },
             { key: '/assets', label: '资产库' },
-            ...(isAdmin
-              ? [
-                  { key: '/users', label: '用户管理' },
-                  { key: '/permissions', label: '权限管理' },
-                ]
-              : []),
+            { key: '/users', label: '用户管理' },
+            ...(isAdmin ? [{ key: '/permissions', label: '权限管理' }] : []),
             { key: '/settings', label: '设置 / API Key' },
           ]}
         />
