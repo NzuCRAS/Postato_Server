@@ -2,6 +2,14 @@ package com.potato.config;
 
 import com.potato.permission.PermissionRule;
 import com.potato.permission.PermissionRuleRepository;
+import com.potato.permission.dict.ActionDef;
+import com.potato.permission.dict.ActionDefRepository;
+import com.potato.permission.dict.FunctionDef;
+import com.potato.permission.dict.FunctionDefRepository;
+import com.potato.permission.dict.PermissionDef;
+import com.potato.permission.dict.PermissionDefRepository;
+import com.potato.permission.dict.ResourceDef;
+import com.potato.permission.dict.ResourceDefRepository;
 import com.potato.project.Project;
 import com.potato.project.ProjectRepository;
 import com.potato.user.User;
@@ -15,6 +23,7 @@ import org.springframework.stereotype.Component;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.function.Supplier;
 
 /**
  * 启动时 seed:
@@ -31,17 +40,26 @@ public class DataSeeder implements CommandLineRunner {
     private final PermissionRuleRepository permissionRuleRepository;
     private final ProjectRepository projectRepository;
     private final PasswordEncoder passwordEncoder;
+    private final FunctionDefRepository functionDefRepository;
+    private final ResourceDefRepository resourceDefRepository;
+    private final ActionDefRepository actionDefRepository;
     private final String adminPassword;
 
     public DataSeeder(UserRepository userRepository,
                       PermissionRuleRepository permissionRuleRepository,
                       ProjectRepository projectRepository,
                       PasswordEncoder passwordEncoder,
+                      FunctionDefRepository functionDefRepository,
+                      ResourceDefRepository resourceDefRepository,
+                      ActionDefRepository actionDefRepository,
                       @Value("${app.seed.admin-password:admin123}") String adminPassword) {
         this.userRepository = userRepository;
         this.permissionRuleRepository = permissionRuleRepository;
         this.projectRepository = projectRepository;
         this.passwordEncoder = passwordEncoder;
+        this.functionDefRepository = functionDefRepository;
+        this.resourceDefRepository = resourceDefRepository;
+        this.actionDefRepository = actionDefRepository;
         this.adminPassword = adminPassword;
     }
 
@@ -49,6 +67,7 @@ public class DataSeeder implements CommandLineRunner {
     public void run(String... args) {
         seedAdmin();
         seedDefaultProject();
+        seedPermissionDicts();
         seedPermissionRules();
     }
 
@@ -86,6 +105,46 @@ public class DataSeeder implements CommandLineRunner {
         p.setUpdatedAt(now);
         projectRepository.save(p);
         log.info("==> Seeded default project (id=default).");
+    }
+
+    /** 幂等注册三类字典:职能 / 资源 / 全局动作。规则引用的取值必须出自这里。 */
+    private void seedPermissionDicts() {
+        upsertDef(functionDefRepository, FunctionDef::new, "admin", "管理员");
+        upsertDef(functionDefRepository, FunctionDef::new, "product", "产品");
+        upsertDef(functionDefRepository, FunctionDef::new, "development", "开发");
+        upsertDef(functionDefRepository, FunctionDef::new, "testing", "测试");
+
+        upsertDef(resourceDefRepository, ResourceDef::new, "requirement", "需求");
+        upsertDef(resourceDefRepository, ResourceDef::new, "wiki", "知识库");
+        upsertDef(resourceDefRepository, ResourceDef::new, "dev_plan", "进度树");
+        upsertDef(resourceDefRepository, ResourceDef::new, "project", "项目");
+        upsertDef(resourceDefRepository, ResourceDef::new, "arch", "结构树");
+        upsertDef(resourceDefRepository, ResourceDef::new, "user", "用户");
+        upsertDef(resourceDefRepository, ResourceDef::new, "permission", "权限");
+
+        // 动作池需覆盖现有规则用到的全部 action(否则规则引用校验会让存量规则改不动)
+        upsertDef(actionDefRepository, ActionDef::new, "view", "查看");
+        upsertDef(actionDefRepository, ActionDef::new, "read", "读取");
+        upsertDef(actionDefRepository, ActionDef::new, "create", "创建");
+        upsertDef(actionDefRepository, ActionDef::new, "edit", "编辑");
+        upsertDef(actionDefRepository, ActionDef::new, "update", "更新");
+        upsertDef(actionDefRepository, ActionDef::new, "delete", "删除");
+        upsertDef(actionDefRepository, ActionDef::new, "comment", "评论");
+        upsertDef(actionDefRepository, ActionDef::new, "edit_structured", "编辑结构化");
+        upsertDef(actionDefRepository, ActionDef::new, "update_status", "更新状态");
+        upsertDef(actionDefRepository, ActionDef::new, "edit_management", "管理编辑");
+        upsertDef(actionDefRepository, ActionDef::new, "sync", "同步");
+        upsertDef(actionDefRepository, ActionDef::new, "manage", "管理");
+    }
+
+    /** key 不存在才插入(幂等)。 */
+    private <T extends PermissionDef> void upsertDef(PermissionDefRepository<T> repo, Supplier<T> factory, String key, String label) {
+        if (!repo.existsByKey(key)) {
+            T d = factory.get();
+            d.setKey(key);
+            d.setLabel(label);
+            repo.save(d);
+        }
     }
 
     /** 幂等补齐权限规则:逐条按 (resource,action) 缺失才插入,不覆盖已存在/被在线编辑过的规则。 */
