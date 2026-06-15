@@ -1,0 +1,75 @@
+import { ResourceTemplate } from '@modelcontextprotocol/sdk/server/mcp.js'
+import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
+import { backendRequest } from './api-client.js'
+
+/**
+ * 注册只读资源。把知识库里"开工必读"的规范/协议(category=standard,含 agent 协议)
+ * 暴露成 MCP resources,并支持按 potato://wiki/<path> 读任意 wiki 页。
+ * apiKey 来自当前 /mcp 请求,闭包透传给后端(与 tool 同一鉴权链路)。
+ *
+ * 定位:resources 管"稳定必读只读暴露"(客户端/人 attach),search_knowledge tool 管"按需检索",互补。
+ */
+const PREFIX = 'potato://wiki/'
+
+/** wiki 物化路径(/a/b)→ 资源 uri(potato://wiki/a/b)。 */
+function toUri(path: string): string {
+  return PREFIX + String(path ?? '').replace(/^\/+/, '')
+}
+
+/** 资源 uri / 模板变量 → wiki 物化路径(补前导 /)。 */
+function toPath(uriHref: string, pathVar: string | string[] | undefined): string {
+  const raw = Array.isArray(pathVar) ? pathVar[0] : pathVar
+  const p = raw ?? uriHref.replace(/^potato:\/\/wiki\//, '')
+  return '/' + String(p).replace(/^\/+/, '')
+}
+
+export function registerResources(server: McpServer, apiKey: string | undefined): void {
+  const template = new ResourceTemplate(PREFIX + '{+path}', {
+    // 列出开工必读规范(standard 分类;agent 协议本就是 standard,自动包含)
+    list: async () => {
+      try {
+        const pages = await backendRequest<Array<Record<string, any>>>('/wiki/search?category=standard', apiKey)
+        return {
+          resources: pages.map((p) => ({
+            uri: toUri(p.path),
+            name: String(p.title ?? p.path),
+            description: `[standard] ${p.path}`,
+            mimeType: 'text/markdown',
+          })),
+        }
+      } catch {
+        // 列出失败(如未授权)不应让整个 resources/list 报错
+        return { resources: [] }
+      }
+    },
+  })
+
+  server.resource(
+    'wiki',
+    template,
+    {
+      description:
+        '知识库 wiki 页(只读)。列出的是开工必读的 standard 规范/agent 协议;也可按 potato://wiki/<path> 读任意页。内容带 frontmatter(title/path/category/version)。',
+      mimeType: 'text/markdown',
+    },
+    async (uri, variables) => {
+      const path = toPath(uri.href, variables.path as string | string[] | undefined)
+      const p = await backendRequest<Record<string, any>>(
+        `/wiki/by-path?path=${encodeURIComponent(path)}`,
+        apiKey,
+      )
+      const frontmatter = [
+        '---',
+        `title: ${p.title ?? ''}`,
+        `path: ${p.path ?? path}`,
+        `category: ${p.category ?? 'doc'}`,
+        `version: ${p.version ?? ''}`,
+        '---',
+        '',
+      ].join('\n')
+      return {
+        contents: [{ uri: uri.href, mimeType: 'text/markdown', text: frontmatter + (p.content ?? '') }],
+      }
+    },
+  )
+}

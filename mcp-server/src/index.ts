@@ -2,6 +2,7 @@ import express from 'express'
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js'
 import { registerTools } from './tools.js'
+import { registerResources } from './resources.js'
 
 const PORT = Number(process.env.MCP_PORT ?? 3001)
 
@@ -15,6 +16,7 @@ function extractApiKey(req: express.Request): string | undefined {
 function buildServer(apiKey: string | undefined): McpServer {
   const server = new McpServer({ name: 'potato-mcp-server', version: '0.1.0' })
   registerTools(server, apiKey)
+  registerResources(server, apiKey)
   return server
 }
 
