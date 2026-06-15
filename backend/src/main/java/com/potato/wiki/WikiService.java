@@ -32,6 +32,16 @@ public class WikiService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "文档不存在"));
     }
 
+    /** 按物化路径取页(供 MCP resources 等按 path 引用);规范化后查,不存在 404。 */
+    public WikiPage getByPath(String path) {
+        if (path == null || path.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "path 必填");
+        }
+        String normalized = normalizePath(path);
+        return repository.findByPath(normalized)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "文档不存在: " + normalized));
+    }
+
     public WikiPage create(String title, String path, String parentPath, String content, String category, List<String> tags, String kind, String userId) {
         if (title == null || title.isBlank() || path == null || path.isBlank()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "标题和路径必填");

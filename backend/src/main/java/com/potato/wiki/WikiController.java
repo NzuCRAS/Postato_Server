@@ -44,6 +44,13 @@ public class WikiController {
         return service.get(id);
     }
 
+    /** 按物化路径取页(供 MCP resources 按 path 引用)。 */
+    @GetMapping("/by-path")
+    public WikiPage getByPath(@AuthenticationPrincipal User user, @RequestParam("path") String path) {
+        permissionService.check(user, "wiki", "read");
+        return service.getByPath(path);
+    }
+
     @PostMapping("/pages")
     public WikiPage create(@AuthenticationPrincipal User user, @RequestBody WikiPageRequest req) {
         permissionService.check(user, "wiki", "edit");

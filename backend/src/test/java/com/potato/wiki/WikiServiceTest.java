@@ -333,4 +333,23 @@ class WikiServiceTest {
                 .isInstanceOf(ResponseStatusException.class)
                 .hasMessageContaining("文档下");
     }
+
+    // ---- getByPath(MCP resources 按 path 取页) ----
+
+    @Test
+    void getByPath_returns_normalized_match() {
+        WikiPage p = new WikiPage();
+        p.setPath("/agent/herness-contract");
+        when(repo.findByPath("/agent/herness-contract")).thenReturn(Optional.of(p));
+        WikiPage r = service.getByPath("agent//herness-contract/"); // 规范化后匹配
+        assertThat(r.getPath()).isEqualTo("/agent/herness-contract");
+    }
+
+    @Test
+    void getByPath_throws_404_when_missing() {
+        when(repo.findByPath("/nope")).thenReturn(Optional.empty());
+        assertThatThrownBy(() -> service.getByPath("/nope"))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("不存在");
+    }
 }
