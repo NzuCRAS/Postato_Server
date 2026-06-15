@@ -11,7 +11,7 @@ const { Title } = Typography
 export default function UsersPage() {
   const { user } = useAuth()
   const isAdmin = user?.functions.includes('admin') ?? false
-  const { users, loading, knownFunctions, reload, createUser, updateUserFunctions, resetUserPassword, deleteUser } = useUsers()
+  const { users, loading, functions, reload, createUser, updateUserFunctions, resetUserPassword, deleteUser } = useUsers()
 
   const [createOpen, setCreateOpen] = useState(false)
   const [createForm] = Form.useForm()
@@ -20,7 +20,7 @@ export default function UsersPage() {
   const [pwTarget, setPwTarget] = useState<UserAdminItem | null>(null)
   const [pwValue, setPwValue] = useState('')
 
-  const fnOptions = knownFunctions.map((f) => ({ value: f, label: f }))
+  const fnOptions = functions.map((f) => ({ value: f.key, label: `${f.label} (${f.key})` }))
 
   const doCreate = async () => {
     try {
@@ -124,14 +124,14 @@ export default function UsersPage() {
           <Form.Item name="password" label="初始密码" rules={[{ required: true, message: '必填' }]}>
             <Input.Password placeholder="初始密码" />
           </Form.Item>
-          <Form.Item name="functions" label="职能(可输入新职能)">
-            <Select mode="tags" options={fnOptions} placeholder="如 development、product" />
+          <Form.Item name="functions" label="职能(取自职能字典)">
+            <Select mode="multiple" options={fnOptions} placeholder="选择职能(如需新增请去权限管理)" showSearch optionFilterProp="label" />
           </Form.Item>
         </Form>
       </Modal>
 
       <Modal title={`改职能 — ${fnTarget?.username ?? ''}`} open={!!fnTarget} onOk={doUpdateFunctions} onCancel={() => setFnTarget(null)} okText="保存">
-        <Select mode="tags" style={{ width: '100%' }} options={fnOptions} value={fnValue} onChange={setFnValue} placeholder="职能(可输入新职能)" />
+        <Select mode="multiple" style={{ width: '100%' }} options={fnOptions} value={fnValue} onChange={setFnValue} placeholder="选择职能(取自职能字典)" showSearch optionFilterProp="label" />
       </Modal>
 
       <Modal title={`重置密码 — ${pwTarget?.username ?? ''}`} open={!!pwTarget} onOk={doResetPassword} onCancel={() => { setPwTarget(null); setPwValue('') }} okText="重置">
