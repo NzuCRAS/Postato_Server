@@ -72,4 +72,116 @@ export function registerResources(server: McpServer, apiKey: string | undefined)
       }
     },
   )
+
+  // ---- 架构图谱:总览(mermaid 依赖图)+ 模块档案 ----
+  server.resource(
+    'arch-overview',
+    'potato://arch/overview',
+    { description: '项目架构总览:模块依赖图(mermaid flowchart,按 group 聚类)。一眼看懂谁依赖谁。', mimeType: 'text/markdown' },
+    async (uri) => {
+      const g = await backendRequest<Record<string, any>>('/arch-graph?projectId=default', apiKey)
+      const text = '# 架构总览(模块依赖图)\n\n```mermaid\n' + archToMermaid(g) + '\n```\n'
+      return { contents: [{ uri: uri.href, mimeType: 'text/markdown', text }] }
+    },
+  )
+
+  server.resource(
+    'arch-module',
+    new ResourceTemplate('potato://arch/module/{key}', {
+      list: async () => {
+        try {
+          const g = await backendRequest<Record<string, any>>('/arch-graph?projectId=default', apiKey)
+          return {
+            resources: ((g?.modules ?? []) as Array<Record<string, any>>).map((m) => ({
+              uri: `potato://arch/module/${m.key}`,
+              name: `${m.title ?? m.key}(模块档案)`,
+              description: m.group ? `[${m.group}]` : undefined,
+              mimeType: 'text/markdown',
+            })),
+          }
+        } catch {
+          return { resources: [] }
+        }
+      },
+    }),
+    { description: '模块档案:依赖(入/出边)+ 需求/技术/经验索引(跨模块标 scope)+ 代码 + 状态。', mimeType: 'text/markdown' },
+    async (uri, variables) => {
+      const key = Array.isArray(variables.key) ? variables.key[0] : variables.key
+      const g = await backendRequest<Record<string, any>>('/arch-graph?projectId=default', apiKey)
+      return { contents: [{ uri: uri.href, mimeType: 'text/markdown', text: moduleDossier(g, String(key)) }] }
+    },
+  )
+}
+
+/** mermaid 节点 id:模块 key 清洗为合法 id。 */
+function mid(key: string): string {
+  return 'm_' + String(key).replace(/[^a-zA-Z0-9_]/g, '_')
+}
+
+/** 把图(模块+边)拼成 mermaid flowchart,按 group 聚成 subgraph。 */
+function archToMermaid(g: Record<string, any>): string {
+  const modules = (g?.modules ?? []) as Array<Record<string, any>>
+  const edges = (g?.edges ?? []) as Array<Record<string, any>>
+  if (modules.length === 0) return 'flowchart TD\n  empty["(暂无模块)"]'
+  const lines: string[] = ['flowchart TD']
+  const groups = new Map<string, Array<Record<string, any>>>()
+  for (const m of modules) {
+    const grp = m.group || '未分组'
+    if (!groups.has(grp)) groups.set(grp, [])
+    groups.get(grp)!.push(m)
+  }
+  let gi = 0
+  for (const [grp, mods] of groups) {
+    lines.push(`  subgraph g${gi}["${grp}"]`)
+    for (const m of mods) lines.push(`    ${mid(m.key)}["${m.title ?? m.key}"]`)
+    lines.push('  end')
+    gi++
+  }
+  for (const e of edges) {
+    const lbl = e.label || e.kind || ''
+    lines.push(`  ${mid(e.from)} -->|${lbl}| ${mid(e.to)}`)
+  }
+  return lines.join('\n')
+}
+
+/** 模块档案 markdown:依赖 + 三类索引(跨模块标 scope)+ 代码 + 状态。 */
+function moduleDossier(g: Record<string, any>, key: string): string {
+  const modules = (g?.modules ?? []) as Array<Record<string, any>>
+  const edges = (g?.edges ?? []) as Array<Record<string, any>>
+  const m = modules.find((x) => x.key === key)
+  if (!m) return `# 模块未找到: ${key}`
+  const out = edges.filter((e) => e.from === key)
+  const inc = edges.filter((e) => e.to === key)
+  const docs = (m.docs ?? []) as Array<Record<string, any>>
+  const fmtDoc = (d: Record<string, any>) => {
+    const cross = Array.isArray(d.scope) && d.scope.length > 1 ? `(跨 ${d.scope.join('↔')})` : ''
+    return `- ${d.ref}${d.title ? ' — ' + d.title : ''} ${cross}`.trimEnd()
+  }
+  const section = (t: string) => {
+    const list = docs.filter((d) => d.type === t).map(fmtDoc)
+    return list.length ? list : ['- 无']
+  }
+  const code = (m.related_code ?? []) as string[]
+  return [
+    `# ${m.title ?? key}(${key})`,
+    '',
+    `- group: ${m.group ?? '—'} | impl_status: ${m.impl_status ?? 'planned'}`,
+    m.description ? `- ${m.description}` : '',
+    '',
+    '## 依赖',
+    `- 出边(依赖):${out.length ? out.map((e) => `${e.to}(${e.kind})`).join('、') : '无'}`,
+    `- 入边(被依赖):${inc.length ? inc.map((e) => `${e.from}(${e.kind})`).join('、') : '无'}`,
+    '',
+    '## 需求',
+    ...section('requirement'),
+    '',
+    '## 技术说明',
+    ...section('tech_doc'),
+    '',
+    '## 经验',
+    ...section('experience'),
+    '',
+    '## related_code',
+    ...(code.length ? code.map((c) => `- ${c}`) : ['- 无']),
+  ].join('\n')
 }

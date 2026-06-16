@@ -320,7 +320,10 @@ export function registerTools(server: McpServer, apiKey: string | undefined): vo
     async ({ project_id }) => {
       try {
         const project = await backendRequest<Record<string, any>>(`/projects/${project_id}`, apiKey)
-        const arch = await backendRequest<Array<Record<string, any>>>(`/projects/${project_id}/arch`, apiKey)
+        const graph = await backendRequest<Record<string, any>>(
+          `/arch-graph?projectId=${encodeURIComponent(project_id)}`,
+          apiKey,
+        )
         const reqs = await backendRequest<Array<Record<string, any>>>(
           `/requirements?projectId=${encodeURIComponent(project_id)}`,
           apiKey,
@@ -331,7 +334,12 @@ export function registerTools(server: McpServer, apiKey: string | undefined): vo
           descriptionMd: project.descriptionMd,
           repos: project.repos,
           doc_links: project.docLinks,
-          architecture: (arch ?? []).map(summarizeArchNode),
+          architecture: (graph?.modules ?? []).map((m: Record<string, any>) => ({
+            key: m.key,
+            title: m.title,
+            group: m.group,
+            impl_status: m.impl_status,
+          })),
           requirements: (reqs ?? []).map((r) => ({ id: r.id, title: r.title, status: r.status })),
         }
         return { content: [{ type: 'text' as const, text: JSON.stringify(summary, null, 2) }] }
@@ -343,24 +351,95 @@ export function registerTools(server: McpServer, apiKey: string | undefined): vo
 
   server.tool(
     'get_architecture',
-    '获取项目结构树(业务域 L0-L4)。可按 tag/layer 过滤;过滤时返回命中节点 + 其祖先链(跨切面动态树)。',
+    '获取项目架构图谱:模块(节点)+ 依赖边。模块含 group(分组)、impl_status、related_code、档案 docs(需求/技术/经验索引,跨模块带 scope)。替代旧 DDD 分类树,一眼看懂「谁依赖谁」。',
     {
       project_id: z.string().describe('项目 ID'),
-      tag: z.string().optional().describe('按标签过滤,如 安全'),
-      layer: z.string().optional().describe('按层过滤:L0|L1|L2|L3|L4'),
     },
-    async ({ project_id, tag, layer }) => {
+    async ({ project_id }) => {
       try {
-        const qs = new URLSearchParams()
-        if (tag) qs.set('tag', tag)
-        if (layer) qs.set('layer', layer)
-        const arch = await backendRequest<Array<Record<string, any>>>(
-          `/projects/${project_id}/arch?${qs.toString()}`,
+        const g = await backendRequest<Record<string, any>>(
+          `/arch-graph?projectId=${encodeURIComponent(project_id)}`,
           apiKey,
         )
-        return {
-          content: [{ type: 'text' as const, text: JSON.stringify({ nodes: (arch ?? []).map(summarizeArchNode) }, null, 2) }],
-        }
+        return { content: [{ type: 'text' as const, text: JSON.stringify(g, null, 2) }] }
+      } catch (e) {
+        return toolError(e)
+      }
+    },
+  )
+
+  server.tool(
+    'upsert_arch_module',
+    '创建/更新架构模块(图谱节点)。key 为项目内唯一标识(如 permission、mcp-gateway),引用/关联都用它;group 是粗分组名(仅用于可视化聚类,非节点)。按 key 幂等。',
+    {
+      project_id: z.string().describe('项目 ID,如 default'),
+      key: z.string().describe('模块唯一标识(如 permission)'),
+      title: z.string().optional().describe('模块名'),
+      description: z.string().optional().describe('职责说明'),
+      group: z.string().optional().describe('粗分组/子系统名(mermaid 聚类用)'),
+      impl_status: z.enum(['planned', 'in_progress', 'done']).optional().describe('实现状态'),
+      related_code: z.array(z.string()).optional().describe('代码 glob'),
+      order: z.number().optional().describe('排序'),
+    },
+    async ({ project_id, key, title, description, group, impl_status, related_code, order }) => {
+      try {
+        const res = await backendRequest<unknown>(
+          `/arch-graph/modules?projectId=${encodeURIComponent(project_id)}`,
+          apiKey,
+          {
+            method: 'POST',
+            body: JSON.stringify({ key, title, description, group, implStatus: impl_status, relatedCode: related_code, order }),
+          },
+        )
+        return { content: [{ type: 'text' as const, text: JSON.stringify(res, null, 2) }] }
+      } catch (e) {
+        return toolError(e)
+      }
+    },
+  )
+
+  server.tool(
+    'upsert_arch_edge',
+    '创建/更新模块间依赖边(有向)。from/to 为已注册模块 key(未注册报错);kind 表达依赖类型(calls/depends/data_flow/auth…)。这是架构图的灵魂——表达「谁调谁、数据怎么流」。',
+    {
+      project_id: z.string().describe('项目 ID'),
+      from: z.string().describe('源模块 key'),
+      to: z.string().describe('目标模块 key'),
+      kind: z.string().optional().describe('依赖类型,默认 depends'),
+      label: z.string().optional().describe('边说明,如「JWT 校验」'),
+    },
+    async ({ project_id, from, to, kind, label }) => {
+      try {
+        const res = await backendRequest<unknown>(
+          `/arch-graph/edges?projectId=${encodeURIComponent(project_id)}`,
+          apiKey,
+          { method: 'POST', body: JSON.stringify({ from, to, kind, label }) },
+        )
+        return { content: [{ type: 'text' as const, text: JSON.stringify(res, null, 2) }] }
+      } catch (e) {
+        return toolError(e)
+      }
+    },
+  )
+
+  server.tool(
+    'relate_arch_doc',
+    '把一篇文档索引到模块档案。type ∈ requirement|tech_doc|experience;ref 为需求 id 或 wiki path;scope 为涉及的模块 key 列表——跨模块文档(如网关↔订单)传多个 key,会在每个模块档案里都挂上并标注跨哪些模块。',
+    {
+      project_id: z.string().describe('项目 ID'),
+      type: z.enum(['requirement', 'tech_doc', 'experience']).describe('文档类型'),
+      ref: z.string().describe('需求 id 或 wiki path'),
+      title: z.string().optional().describe('展示名'),
+      scope: z.array(z.string()).describe('涉及的模块 key 列表(跨模块传多个)'),
+    },
+    async ({ project_id, type, ref, title, scope }) => {
+      try {
+        await backendRequest<unknown>(
+          `/arch-graph/relate-doc?projectId=${encodeURIComponent(project_id)}`,
+          apiKey,
+          { method: 'POST', body: JSON.stringify({ type, ref, title, scope }) },
+        )
+        return { content: [{ type: 'text' as const, text: JSON.stringify({ ok: true, scope }, null, 2) }] }
       } catch (e) {
         return toolError(e)
       }
@@ -523,21 +602,6 @@ export function registerTools(server: McpServer, apiKey: string | undefined): vo
       }
     },
   )
-}
-
-function summarizeArchNode(n: Record<string, any>) {
-  return {
-    path: n.path,
-    layer: n.layer,
-    type: n.type,
-    title: n.title,
-    description: n.description,
-    impl_status: n.impl_status,
-    tags: n.tags,
-    related_docs: n.related_docs,
-    related_code: n.related_code,
-    source: n.source,
-  }
 }
 
 function summarizePlan(plan: Record<string, any>) {
