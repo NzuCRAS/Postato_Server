@@ -9,15 +9,15 @@ description: 在 Potato 平台上做开发任务时遵循的标准作业流程(S
 
 完整可调用的 MCP 能力清单见 `references/mcp-toolbox.md`;各步细节按需查对应 reference。
 
-## 全程执行文档(边走边记,贯穿始终)
+## 全程走平台 SOP 工作流(Run,贯穿始终)
 
-**开工第一件事**:在 `.potato/runs/<可读需求简名>-run<N>.md` 建一份**执行文档**(模板见 `references/run-log.md`),先写头部 + 开工分流结论。
+**开工第一件事**:`advance_run(requirement_id)` —— 平台按 SOP 给你建/取一个工作流 Run,**每步把你需要的文档直接注入返回**(需求详情 / 架构概览 / standard 全文;asset/experience 给元数据列表,用 `fetch_doc(path)` 取全文),并附上一步结果。
 
-- 它是本轮执行的**全链路轨迹**:像 COT 一样让你边走边自检,也给用户一份可查证、可优化的交代。**区别于「执行计划」**(那是事前写定要改什么);执行文档记录**实际怎么走的**。
-- **全链路粒度逐段追加**:每走完一个 SOP 步骤(下方分流 + 九步)、每完成一个 dev_plan 叶子节点,就把结论**追加进本地文件**——本地文件随时是最新草稿。
-- 没把握 / 跳过 / 豁免的步骤**如实写原因**,不补全不美化(自检的价值在于诚实)。
-- **跑完 或 中断**(任务结束 / 用户喊停 / 节点 blocked / 会话将尽)→ `write_knowledge(category="runlog", path="/runs/<可读需求简名>-run<N>", content=本地md全文)` **回写平台**,状态栏标「已完成 / 中断(原因)」。runlog 默认不污染知识检索。
-- **路径用可读名,需求/节点编号写进文档内容、不入 wiki 路径**(编号对人不可读)——runlog、技术方案(`write_tech_proposal` 自动用可读 title 作 path)同理。
+- **驱动循环**:`advance_run` 拿当前步 + 注入文档 → 干这一步 → `complete_step(requirement_id, note, status)` 登记并前进 → 再 `advance_run` 下一步……全部走完 `finish_run(requirement_id)` 收尾(平台校验全步走过 + 组装 runlog 落库)。
+- **不跳步、不合并**:平台硬校验按序推进;`status="skipped"` **必须填 `skip_reason`**——按 tier 该免的、或确实不需要的,也要**走到该步并写明忽略原因**(如「tier=Small 豁免技术方案」),**不能静默跳过**。
+- **文档由平台注入,别再靠自觉 search**:每步该读什么 `advance_run` 已给;检索类两阶段(看列表 → `fetch_doc` 取全文)。
+- runlog 由平台**实时累积**(每步一笔),`finish_run` 落 wiki(category=runlog)——它证「流程合规 + 文档注入 + 忽略原因」;**工作产物(commit/验证)见 dev_plan**,两者分层不复制。
+- 下方「分流 + 九步」就是 Run 各步的含义;逐步走时用 `advance_run`/`complete_step` 驱动,别脱离工作流自由发挥。
 
 ## 开工先分流(按 `tier`,仅供参考)
 
@@ -50,7 +50,7 @@ description: 在 Potato 平台上做开发任务时遵循的标准作业流程(S
 9. **收尾沉淀 + 回标(必做)** —
    - 可复用经验 → `write_knowledge(category="experience")` 落 `/experience/…`;开发伴生的技术方案要转正,见 `references/promotion.md`。
    - 需求完成 → `relate_requirement_arch` 把需求关联并回标其落地的结构树**叶子**业务模块 impl_status。
-   - **回写执行文档** → 把全程记录的 `.potato/runs/…md` 经 `write_knowledge(category="runlog")` 写回平台。
+   - **收尾工作流** → `finish_run(requirement_id)` 校验每步都已 done/skipped,把 runlog 落库。
 
 ## 执行后自查(完成前对照,逐条过)
 
@@ -60,7 +60,7 @@ description: 在 Potato 平台上做开发任务时遵循的标准作业流程(S
 - [ ] 可复用经验**沉淀**了(write_knowledge category=experience)?
 - [ ] 需求完成**回标**结构树叶子 impl_status 了(relate_requirement_arch)?
 - [ ] 第 3 步注入的规范真遵守了 / 第 4 步资产真复用了?
-- [ ] **执行文档全程记了、已回写平台**(write_knowledge category=runlog)?
+- [ ] **全程走了平台 Run**(advance_run/complete_step 逐步、不跳步、skip 填了原因)、`finish_run` 落了 runlog?
 
 ## 不可协商(平台约定)
 
@@ -68,5 +68,5 @@ description: 在 Potato 平台上做开发任务时遵循的标准作业流程(S
 - 前端**视图/逻辑分离**(api/ 纯 HTTP、features/useXxx 逻辑、pages|components 只渲染)。
 - 容器内验证:`docker compose exec -T backend mvn ...`、前端/MCP `npx tsc --noEmit`;改后端 `docker compose restart backend`。
 - 非交互推送 `GIT_TERMINAL_PROMPT=0 git push`;commit 末尾保留 `Co-Authored-By`。
-- 执行文档落 `.potato/runs/`(**已 gitignore,不进版本库**);回写平台用 `write_knowledge(category="runlog")`,落 `/runs/<可读需求简名>-run<N>`。
-- wiki 路径用**可读名**,需求/节点编号写文档内、不当目录(编号对人不可读)。技术方案 path = `/tech-proposals/<title>`、runlog path = `/runs/<可读名>`。
+- **SOP 执行每轮必走平台 Run**:`advance_run` 起步、逐步 `complete_step`(不跳步、不合并、skip 必填原因)、`finish_run` 收尾落 runlog;文档由平台每步注入,不靠自觉 search。
+- wiki 路径用**可读名**,需求/节点编号写文档内、不当目录(编号对人不可读)。技术方案 path = `/tech-proposals/<title>`、runlog 由 `finish_run` 落 `/runs/run-<reqId>`。

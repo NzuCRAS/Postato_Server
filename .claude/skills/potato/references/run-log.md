@@ -1,6 +1,7 @@
 # 执行文档(run log)模板
 
-> LLM 走 potato 闭环时**开工即建**本地文件 `.potato/runs/<可读需求简名>-run<N>.md`(用**可读名**,别用需求编号),按本模板**边执行边逐段追加**(全链路粒度:分流 + 九步 + 每个 dev_plan 节点);**跑完或中断**时 `write_knowledge(category="runlog", path="/runs/<可读需求简名>-run<N>")` 回写平台(path 用**可读名**,需求编号写进文档头部、不入路径)。
+> **runlog 现由平台 SOP 工作流(Run)驱动生成**:`advance_run` / `complete_step` 逐步累积、`finish_run` 落 wiki(category=runlog,path `/runs/run-<reqId>`)。无需手写本地 md。
+> 本模板是 runlog 的**结构参考**(平台按此组织每步:状态 / 执行结果 / 注入文档 / 忽略原因)。
 >
 > 它是过程轨迹(COT 自检 + 给人交代),区别于事前写定改动的「执行计划」。**没把握/没做到的步骤如实写「跳过/豁免 + 原因」,不补全不美化。**
 
