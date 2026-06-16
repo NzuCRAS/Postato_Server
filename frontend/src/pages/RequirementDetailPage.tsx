@@ -7,6 +7,7 @@ import { useDevPlan } from '../features/useDevPlan'
 import { statusColor, statusLabel } from '../features/requirementStatus'
 import StructuredView from '../components/StructuredView'
 import DevPlanTree from '../components/DevPlanTree'
+import RunProgress from '../components/RunProgress'
 import NodeDetailDrawer from '../components/NodeDetailDrawer'
 import { updateDevPlanNode } from '../api/devplan'
 import type { AcceptanceItem, DevPlanNode } from '../types'
@@ -183,6 +184,11 @@ export default function RequirementDetailPage() {
             key: 'devplan',
             label: '开发进度',
             children: devPlanTab,
+          },
+          {
+            key: 'run',
+            label: 'SOP 工作流',
+            children: <RunProgress reqId={id} />,
           },
         ]}
       />

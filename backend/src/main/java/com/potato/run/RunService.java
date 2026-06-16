@@ -84,6 +84,11 @@ public class RunService {
                 });
     }
 
+    /** 只读取最新 Run(不创建);供前端展示。 */
+    public SopRun findLatest(String reqId) {
+        return runRepository.findByReqIdOrderByCreatedAtDesc(reqId).stream().findFirst().orElse(null);
+    }
+
     /** 推进:返回当前步 + 平台注入的文档 + 上一步结果摘要(不改变步状态)。 */
     public AdvanceResult advance(String reqId) {
         SopRun run = getOrStart(reqId);

@@ -279,6 +279,28 @@ export interface ArchGraph {
   edges: ArchEdgeItem[]
 }
 
+// ---- SOP 执行工作流(Run)----
+
+export interface RunStepItem {
+  key: string
+  title: string
+  status: string // pending | done | skipped
+  note?: string
+  skip_reason?: string
+  injected_docs?: string[]
+  at?: string
+}
+
+export interface SopRunItem {
+  id: string
+  reqId: string
+  tier?: string
+  status: string // running | finished | aborted
+  current_step_index: number
+  steps: RunStepItem[]
+  runlog_path?: string
+}
+
 export interface ArchNode {
   id: string
   projectId: string

@@ -25,11 +25,11 @@ public class RunController {
         this.permissionService = permissionService;
     }
 
-    /** 取当前 Run(无则新建)。 */
+    /** 取当前 Run(只读,不创建);无则返回 null。 */
     @GetMapping
     public SopRun get(@AuthenticationPrincipal User user, @RequestParam String reqId) {
         permissionService.check(user, "project", "view");
-        return service.getOrStart(reqId);
+        return service.findLatest(reqId);
     }
 
     /** 推进:返回当前步 + 注入文档 + 上一步结果。 */
