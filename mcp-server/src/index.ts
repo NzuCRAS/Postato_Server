@@ -49,8 +49,9 @@ app.post('/mcp', async (req, res) => {
 // set_dev_plan_repo / write_knowledge / write_tech_proposal /
 // get_project_detail / get_architecture / sync_project_modules / upsert_arch_layer /
 // create_requirement / relate_requirement_arch /
-// upsert_arch_module / upsert_arch_edge / relate_arch_doc
-const TOOL_COUNT = 18
+// upsert_arch_module / upsert_arch_edge / relate_arch_doc /
+// advance_run / complete_step / finish_run / fetch_doc
+const TOOL_COUNT = 22
 
 app.listen(PORT, () => {
   console.log(`[potato-mcp] Streamable HTTP MCP server on http://localhost:${PORT}/mcp (tools: ${TOOL_COUNT})`)

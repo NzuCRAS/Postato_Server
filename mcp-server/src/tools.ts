@@ -446,6 +446,85 @@ export function registerTools(server: McpServer, apiKey: string | undefined): vo
     },
   )
 
+  // ---- SOP 执行工作流(平台驱动步骤机)----
+
+  server.tool(
+    'advance_run',
+    'SOP 工作流推进:返回**当前步骤** + 平台为该步**注入的文档**(needRead 类如 standard 规范/需求详情/架构概览带全文;检索类 asset/experience 为元数据列表,需再用 fetch_doc 取全文)+ **上一步结果**。按 requirement_id 维护;开发每一步都先调它拿当前步与资料,处理完再 complete_step。',
+    { requirement_id: z.string().describe('需求 ID(全流程按它串联同一个 Run)') },
+    async ({ requirement_id }) => {
+      try {
+        const r = await backendRequest<unknown>(
+          `/runs/advance?reqId=${encodeURIComponent(requirement_id)}`,
+          apiKey,
+          { method: 'POST' },
+        )
+        return { content: [{ type: 'text' as const, text: JSON.stringify(r, null, 2) }] }
+      } catch (e) {
+        return toolError(e)
+      }
+    },
+  )
+
+  server.tool(
+    'complete_step',
+    '登记**当前步**结果并前进到下一步。status=done|skipped;**skipped 必须填 skip_reason**(不能静默跳过——按 tier 该免的也要写明,如「tier=Small 豁免技术方案」);平台硬校验必须按序,不能跳步。',
+    {
+      requirement_id: z.string().describe('需求 ID'),
+      note: z.string().optional().describe('本步执行结果/产出摘要'),
+      status: z.enum(['done', 'skipped']).optional().describe('done(默认)| skipped'),
+      skip_reason: z.string().optional().describe('skipped 时必填:为什么忽略本步'),
+    },
+    async ({ requirement_id, note, status, skip_reason }) => {
+      try {
+        const r = await backendRequest<unknown>(
+          `/runs/complete?reqId=${encodeURIComponent(requirement_id)}`,
+          apiKey,
+          { method: 'POST', body: JSON.stringify({ note, status, skipReason: skip_reason }) },
+        )
+        return { content: [{ type: 'text' as const, text: JSON.stringify(r, null, 2) }] }
+      } catch (e) {
+        return toolError(e)
+      }
+    },
+  )
+
+  server.tool(
+    'finish_run',
+    'SOP 工作流收尾:校验每步都已 done/skipped(否则拒绝),把整个工作流组装成 runlog 落知识库(category=runlog)。需求开发全流程走完后调用。',
+    { requirement_id: z.string().describe('需求 ID') },
+    async ({ requirement_id }) => {
+      try {
+        const r = await backendRequest<unknown>(
+          `/runs/finish?reqId=${encodeURIComponent(requirement_id)}`,
+          apiKey,
+          { method: 'POST' },
+        )
+        return { content: [{ type: 'text' as const, text: JSON.stringify(r, null, 2) }] }
+      } catch (e) {
+        return toolError(e)
+      }
+    },
+  )
+
+  server.tool(
+    'fetch_doc',
+    '按 wiki 物化路径取文档**全文**。配合 search_knowledge 做两阶段检索:先 search_knowledge 拿到候选列表(标题/路径/摘要),挑中后用本工具取全文。',
+    { path: z.string().describe('wiki 物化路径,如 /experience/cache-avalanche') },
+    async ({ path }) => {
+      try {
+        const p = await backendRequest<Record<string, any>>(
+          `/wiki/by-path?path=${encodeURIComponent(path)}`,
+          apiKey,
+        )
+        const view = { title: p.title, path: p.path, category: p.category, tags: p.tags, content: p.content }
+        return { content: [{ type: 'text' as const, text: JSON.stringify(view, null, 2) }] }
+      } catch (e) {
+        return toolError(e)
+      }
+    },
+  )
+
   server.tool(
     'sync_project_modules',
     '把仓库 .project.yaml 解析出的模块声明推给平台,幂等 reconcile 结构树 L3+ 工程树(消失的归档,不覆盖手动节点)。node 须为完整物化路径(含 L0 根)。',
