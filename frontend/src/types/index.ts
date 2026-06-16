@@ -247,6 +247,38 @@ export interface Project {
   updatedAt?: string
 }
 
+// ---- 架构图谱(模块依赖图 + 模块档案)----
+
+export interface ArchDocIndex {
+  type: string // requirement | tech_doc | experience
+  ref: string
+  title?: string
+  scope?: string[]
+}
+
+export interface ArchModuleItem {
+  key: string
+  title?: string
+  description?: string
+  group?: string
+  impl_status?: string
+  related_code?: string[]
+  docs?: ArchDocIndex[]
+}
+
+export interface ArchEdgeItem {
+  id?: string
+  from: string
+  to: string
+  kind?: string
+  label?: string
+}
+
+export interface ArchGraph {
+  modules: ArchModuleItem[]
+  edges: ArchEdgeItem[]
+}
+
 export interface ArchNode {
   id: string
   projectId: string

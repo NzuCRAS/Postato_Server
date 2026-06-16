@@ -5,7 +5,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { addDocLink, addRepo, getProject, removeDocLink, removeRepo } from '../api/project'
 import { useRequirements } from '../features/useRequirements'
 import { statusColor, statusLabel } from '../features/requirementStatus'
-import ArchitectureTree from '../components/ArchitectureTree'
+import ArchitectureGraph from '../components/ArchitectureGraph'
 import type { Project } from '../types'
 
 const { Title, Text, Link, Paragraph } = Typography
@@ -146,7 +146,7 @@ export default function ProjectDetailPage() {
         items={[
           { key: 'overview', label: '概览', children: overviewTab },
           { key: 'repos', label: `仓库 (${project.repos?.length ?? 0})`, children: reposTab },
-          { key: 'arch', label: '结构树', children: <ArchitectureTree pid={id} /> },
+          { key: 'arch', label: '架构图谱', children: <ArchitectureGraph pid={id} /> },
           { key: 'docs', label: `文档 (${project.docLinks?.length ?? 0})`, children: docsTab },
           { key: 'reqs', label: '需求', children: reqTab },
         ]}
