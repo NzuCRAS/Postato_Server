@@ -1,10 +1,10 @@
 // 视图层:知识库页(左目录树 + 搜索 + 分类筛选 + 右文档查看/资产/晋升)
 import { useState } from 'react'
 import { Breadcrumb, Button, Card, Empty, Input, Modal, Popconfirm, Select, Space, Tag, Typography, message } from 'antd'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext'
 import { useWiki } from '../features/useWiki'
-import { createWiki, moveDir, updateWiki, deleteWiki } from '../api/wiki'
+import { createWiki, moveDir, updateWiki, deleteWiki, deleteDir } from '../api/wiki'
 import WikiTree from '../components/WikiTree'
 import MarkdownView from '../components/MarkdownView'
 
@@ -23,7 +23,8 @@ const CATEGORY_OPTIONS = [
 export default function WikiPage() {
   const { user } = useAuth()
   const navigate = useNavigate()
-  const { pages, loading, selected, selectedId, setSelectedId, search, category, filterCategory, reload } = useWiki()
+  const [searchParams] = useSearchParams()
+  const { pages, loading, selected, selectedId, setSelectedId, search, category, filterCategory, reload } = useWiki(searchParams.get('path') ?? undefined)
   const canEdit = user?.functions.some((f) => f === 'admin' || f === 'product') ?? false
   const [promoting, setPromoting] = useState(false)
   const [promoteCat, setPromoteCat] = useState('experience')
@@ -73,6 +74,30 @@ export default function WikiPage() {
   const openMove = (node: { isDir: boolean; path: string; id?: string; name: string }) => {
     setMoveTarget(node)
     setMovePath(node.path)
+  }
+
+  // 删除整目录:级联删该前缀下所有文档,二次确认。删后若当前选中文档在其下则清空选中。
+  const openDeleteDir = (node: { isDir: boolean; path: string; id?: string; name: string }) => {
+    const childCount = pages.filter((p) => p.path === node.path || p.path.startsWith(node.path + '/')).length
+    Modal.confirm({
+      title: `删除目录「${node.name}」?`,
+      content: `将连带删除该目录下全部 ${childCount} 个文档/子目录,不可恢复(不影响已上传的资产文件)。`,
+      okText: '删除',
+      okButtonProps: { danger: true },
+      cancelText: '取消',
+      onOk: async () => {
+        try {
+          await deleteDir(node.path)
+          message.success('已删除目录')
+          if (selected && (selected.path === node.path || selected.path.startsWith(node.path + '/'))) {
+            setSelectedId(null)
+          }
+          reload()
+        } catch (e) {
+          message.error(e instanceof Error ? e.message : '删除失败')
+        }
+      },
+    })
   }
 
   const doMove = async () => {
@@ -130,7 +155,7 @@ export default function WikiPage() {
           options={CATEGORY_OPTIONS}
           style={{ width: '100%', marginBottom: 12 }}
         />
-        <WikiTree pages={pages} selectedId={selectedId} onSelect={setSelectedId} canEdit={canEdit} onMoveNode={openMove} onNewInDir={newInDir} />
+        <WikiTree pages={pages} selectedId={selectedId} onSelect={setSelectedId} canEdit={canEdit} onMoveNode={openMove} onNewInDir={newInDir} onDeleteNode={openDeleteDir} />
       </Card>
 
       <Card style={{ flex: 1, overflow: 'auto' }}>

@@ -104,7 +104,7 @@ export default function ProjectDetailPage() {
           <List.Item actions={[<Button key="d" type="link" danger onClick={async () => setProject(await removeDocLink(id, d.path))}>删除</Button>]}>
             <Space>
               {d.type && <Tag>{d.type}</Tag>}
-              <Link href={`/wiki?path=${encodeURIComponent(d.path)}`} target="_blank">{d.title || d.path}</Link>
+              <Link onClick={() => navigate(`/wiki?path=${encodeURIComponent(d.path)}`)}>{d.title || d.path}</Link>
               <Text type="secondary">{d.path}</Text>
             </Space>
           </List.Item>
