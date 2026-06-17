@@ -195,6 +195,28 @@ public class WikiService {
     }
 
     /**
+     * 删除整目录:删 prefix 目录本身及其下所有文档(物化路径前缀级联),像 rm -r 一个文件夹。
+     * 与单页删除一致,**不**级联删 MinIO 资产(资产可能被多页引用,留待资产库统一治理)。空/不存在 → 400/404。
+     */
+    public List<WikiPage> deleteDir(String prefix) {
+        String from = normalizePath(prefix);
+        if ("/".equals(from)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "目录不能为空");
+        }
+        List<WikiPage> all = repository.findAllByOrderByPathAsc();
+        List<WikiPage> affected = new ArrayList<>();
+        for (WikiPage p : all) {
+            String pp = p.getPath();
+            if (pp != null && (pp.equals(from) || pp.startsWith(from + "/"))) affected.add(p);
+        }
+        if (affected.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "目录不存在或为空: " + from);
+        }
+        repository.deleteAll(affected);
+        return affected;
+    }
+
+    /**
      * 多模式检索。VECTOR 预留未实现(报 501)。默认排除 tmp 标签页(临时方案不污染知识结果)。
      * category 非空时按资产分类过滤(doc/asset/standard;存量空值视为 doc)。
      * 数据量小,在 Java 内分词过滤;量大后可换 mongo 文本索引 / 向量库。

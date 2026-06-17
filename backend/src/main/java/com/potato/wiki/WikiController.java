@@ -111,4 +111,11 @@ public class WikiController {
         permissionService.check(user, "wiki", "edit");
         service.delete(id);
     }
+
+    /** 删除整目录(级联其下所有文档;**不**级联 MinIO 资产,与单页删除一致)。空/不存在 → 400/404。 */
+    @DeleteMapping("/dir")
+    public List<WikiPage> deleteDir(@AuthenticationPrincipal User user, @RequestParam("prefix") String prefix) {
+        permissionService.check(user, "wiki", "edit");
+        return service.deleteDir(prefix);
+    }
 }

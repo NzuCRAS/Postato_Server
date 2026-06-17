@@ -60,6 +60,11 @@ export function deleteWiki(id: string): Promise<void> {
   return request<void>(`/wiki/pages/${id}`, { method: 'DELETE' })
 }
 
+/** 删除整目录:级联删该前缀下所有文档(目录本身 + 子文档)。返回被删的页列表。 */
+export function deleteDir(prefix: string): Promise<WikiPageItem[]> {
+  return request<WikiPageItem[]>(`/wiki/dir?prefix=${encodeURIComponent(prefix)}`, { method: 'DELETE' })
+}
+
 /** 整目录移动/重命名:把 fromPrefix 子树整体迁到 toPrefix(后端级联改路径前缀)。 */
 export function moveDir(fromPrefix: string, toPrefix: string): Promise<WikiPageItem[]> {
   return request<WikiPageItem[]>('/wiki/move-dir', {

@@ -25,6 +25,7 @@ interface Props {
   canEdit?: boolean
   onMoveNode?: (node: WikiNodeMeta) => void
   onNewInDir?: (dirPath: string) => void
+  onDeleteNode?: (node: WikiNodeMeta) => void
 }
 
 /** 父路径:/a/b → /a;/a → ''(根) */
@@ -33,23 +34,25 @@ function parentOf(path: string): string {
   return i <= 0 ? '' : path.substring(0, i)
 }
 
-function buildTree(pages: WikiPageItem[], opts: Pick<Props, 'canEdit' | 'onMoveNode' | 'onNewInDir'>): DataNode[] {
+function buildTree(pages: WikiPageItem[], opts: Pick<Props, 'canEdit' | 'onMoveNode' | 'onNewInDir' | 'onDeleteNode'>): DataNode[] {
   const roots: TreeNode[] = []
   const byPath = new Map<string, TreeNode>()
 
-  // 给节点标题挂操作菜单(目录:重命名移动 / 在此新建;文档:重命名移动)
+  // 给节点标题挂操作菜单(目录:重命名移动 / 在此新建 / 删除目录;文档:重命名移动)
   const withActions = (meta: WikiNodeMeta, label: ReactNode): ReactNode => {
     if (!opts.canEdit) return label
     const items: MenuProps['items'] = meta.isDir
       ? [
           { key: 'move', label: '重命名 / 移动目录' },
           { key: 'new', label: '在此新建文档' },
+          { key: 'delete', label: '删除目录', danger: true },
         ]
       : [{ key: 'move', label: '重命名 / 移动' }]
     const onClick: MenuProps['onClick'] = (info) => {
       info.domEvent.stopPropagation()
       if (info.key === 'move') opts.onMoveNode?.(meta)
       else if (info.key === 'new') opts.onNewInDir?.(meta.path)
+      else if (info.key === 'delete') opts.onDeleteNode?.(meta)
     }
     return (
       <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
@@ -104,13 +107,13 @@ function buildTree(pages: WikiPageItem[], opts: Pick<Props, 'canEdit' | 'onMoveN
   return roots
 }
 
-export default function WikiTree({ pages, selectedId, onSelect, canEdit, onMoveNode, onNewInDir }: Props) {
+export default function WikiTree({ pages, selectedId, onSelect, canEdit, onMoveNode, onNewInDir, onDeleteNode }: Props) {
   return (
     <Tree.DirectoryTree
       showLine={{ showLeafIcon: false }}
       showIcon
       blockNode
-      treeData={buildTree(pages, { canEdit, onMoveNode, onNewInDir })}
+      treeData={buildTree(pages, { canEdit, onMoveNode, onNewInDir, onDeleteNode })}
       selectedKeys={selectedId ? [selectedId] : []}
       onSelect={(keys) => {
         const k = String(keys[0] ?? '')

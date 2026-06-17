@@ -245,6 +245,38 @@ class WikiServiceTest {
                 .hasMessageContaining("子目录");
     }
 
+    // ---- 目录删除(级联前缀) ----
+
+    @Test
+    void deleteDir_cascades_prefix_and_keeps_others() {
+        WikiPage a = new WikiPage();
+        a.setPath("/dev/a");
+        WikiPage b = new WikiPage();
+        b.setPath("/dev/a/b");
+        WikiPage other = new WikiPage();
+        other.setPath("/other");
+        when(repo.findAllByOrderByPathAsc()).thenReturn(List.of(a, b, other));
+        List<WikiPage> deleted = service.deleteDir("/dev/a");
+        assertThat(deleted).extracting(WikiPage::getPath).containsExactlyInAnyOrder("/dev/a", "/dev/a/b");
+        // 只删命中前缀的页,/other 不在删除集合
+        verify(repo).deleteAll(deleted);
+    }
+
+    @Test
+    void deleteDir_throws_404_when_empty() {
+        when(repo.findAllByOrderByPathAsc()).thenReturn(List.of());
+        assertThatThrownBy(() -> service.deleteDir("/nope"))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("不存在");
+    }
+
+    @Test
+    void deleteDir_rejects_empty_prefix() {
+        assertThatThrownBy(() -> service.deleteDir("/"))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("不能为空");
+    }
+
     // ---- assets ----
 
     @Test
