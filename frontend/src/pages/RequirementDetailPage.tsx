@@ -1,6 +1,7 @@
 // 视图层:需求详情 + 状态流转 + 编辑入口 + 开发进度树
 import { useMemo, useState } from 'react'
 import { Alert, Button, Card, Empty, Input, Space, Spin, Tabs, Tag, Typography, message } from 'antd'
+import { ArrowLeftOutlined } from '@ant-design/icons'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useRequirementDetail } from '../features/useRequirementDetail'
 import { useDevPlan } from '../features/useDevPlan'
@@ -137,6 +138,7 @@ export default function RequirementDetailPage() {
     <Space direction="vertical" style={{ width: '100%' }} size="large">
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <Space wrap>
+          <Button icon={<ArrowLeftOutlined />} onClick={() => navigate(-1)}>返回</Button>
           <Title level={3} style={{ margin: 0 }}>{data.title}</Title>
           <Tag color={statusColor(data.status)}>{statusLabel(data.status)}</Tag>
           <Tag>v{data.version}</Tag>
