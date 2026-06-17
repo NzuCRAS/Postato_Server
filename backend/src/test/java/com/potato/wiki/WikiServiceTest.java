@@ -277,6 +277,54 @@ class WikiServiceTest {
                 .hasMessageContaining("不能为空");
     }
 
+    // ---- 相关性排序检索(searchRanked,SOP 节点注入用) ----
+
+    @Test
+    void searchRanked_or_semantics_recalls_partial_matches() {
+        // 旧 search 多词 AND 会因"无文档同时含三词"召回空;searchRanked 用 OR + 打分应都召回
+        WikiPage a = page("Toast 组件", "vue 实现", List.of("vue"));
+        a.setCategory("asset");
+        WikiPage b = page("HTTP 工具", "请求封装", List.of("util"));
+        b.setCategory("asset");
+        when(repo.findAllByOrderByPathAsc()).thenReturn(List.of(a, b));
+        List<WikiPage> r = service.searchRanked("组件 工具 复用", "asset", 5);
+        assertThat(titles(r)).containsExactlyInAnyOrder("Toast 组件", "HTTP 工具");
+    }
+
+    @Test
+    void searchRanked_ranks_title_hits_above_content_hits() {
+        WikiPage titleHit = page("缓存方案", "其他内容", List.of());
+        titleHit.setCategory("experience");
+        WikiPage contentHit = page("随笔", "讲了缓存的注意事项", List.of());
+        contentHit.setCategory("experience");
+        when(repo.findAllByOrderByPathAsc()).thenReturn(List.of(contentHit, titleHit)); // 顺序故意反着
+        List<WikiPage> r = service.searchRanked("缓存", "experience", 5);
+        assertThat(titles(r)).containsExactly("缓存方案", "随笔"); // 标题命中(权重高)排前
+    }
+
+    @Test
+    void searchRanked_empty_query_returns_empty() {
+        assertThat(service.searchRanked("   ", "asset", 5)).isEmpty();
+    }
+
+    @Test
+    void searchRanked_respects_topK_category_and_excludes_tmp() {
+        WikiPage a = page("缓存一", "缓存", List.of());
+        a.setCategory("experience");
+        WikiPage b = page("缓存二", "缓存", List.of());
+        b.setCategory("experience");
+        WikiPage c = page("缓存三", "缓存", List.of());
+        c.setCategory("experience");
+        WikiPage other = page("缓存四", "缓存", List.of()); // 异类分类应被过滤
+        other.setCategory("asset");
+        WikiPage tmp = page("缓存五", "缓存", List.of("tmp")); // tmp 应排除
+        tmp.setCategory("experience");
+        when(repo.findAllByOrderByPathAsc()).thenReturn(List.of(a, b, c, other, tmp));
+        List<WikiPage> r = service.searchRanked("缓存", "experience", 2);
+        assertThat(r).hasSize(2); // TopK 截断
+        assertThat(titles(r)).doesNotContain("缓存四", "缓存五");
+    }
+
     // ---- assets ----
 
     @Test

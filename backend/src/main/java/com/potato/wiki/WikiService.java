@@ -239,6 +239,97 @@ public class WikiService {
         return result;
     }
 
+    /**
+     * 相关性排序检索(SOP 节点按需求关键词召回候选专用):多词 OR + 字段加权命中打分,取 TopK。
+     * 与 {@link #search} 的"子串 AND"不同——AND 过严易召回空,这里按重叠度排序、部分命中也可用。
+     * 对查询做轻量中文分词(CJK bigram + ASCII 词),按 title>tags>content 加权命中数打分。
+     * 同样排除 tmp 与(非显式)runlog;query 为空 / 无命中 → 返回空(交由 LLM 自检索兜底)。
+     */
+    public List<WikiPage> searchRanked(String q, String category, int topK) {
+        List<String> terms = tokenizeForMatch(q);
+        if (terms.isEmpty() || topK <= 0) return List.of();
+        String filterCat = (category == null || category.isBlank()) ? null : category.trim();
+        List<WikiPage> candidates = new ArrayList<>();
+        List<Integer> scores = new ArrayList<>();
+        for (WikiPage p : repository.findAllByOrderByPathAsc()) {
+            if (p.getTags() != null && p.getTags().contains("tmp")) continue;
+            if (filterCat == null && "runlog".equals(effectiveCategory(p))) continue;
+            if (filterCat != null && !filterCat.equals(effectiveCategory(p))) continue;
+            int score = scoreOf(p, terms);
+            if (score > 0) {
+                candidates.add(p);
+                scores.add(score);
+            }
+        }
+        // 按分数降序取 TopK(分数高者在前;并列保持 path 升序的稳定顺序)
+        List<Integer> idx = new ArrayList<>();
+        for (int i = 0; i < candidates.size(); i++) idx.add(i);
+        idx.sort((a, b) -> Integer.compare(scores.get(b), scores.get(a)));
+        List<WikiPage> out = new ArrayList<>();
+        for (int i = 0; i < idx.size() && out.size() < topK; i++) out.add(candidates.get(idx.get(i)));
+        return out;
+    }
+
+    /** 字段加权命中打分:title 命中计 3、tags 计 2、content 计 1(每个查询词最多各计一次)。 */
+    private int scoreOf(WikiPage p, List<String> terms) {
+        String title = p.getTitle() == null ? "" : p.getTitle().toLowerCase();
+        String content = p.getContent() == null ? "" : p.getContent().toLowerCase();
+        String tags = (p.getTags() == null) ? "" : String.join(" ", p.getTags()).toLowerCase();
+        int score = 0;
+        for (String t : terms) {
+            if (title.contains(t)) score += 3;
+            if (tags.contains(t)) score += 2;
+            if (content.contains(t)) score += 1;
+        }
+        return score;
+    }
+
+    /**
+     * 轻量分词(仅用于相关性匹配):ASCII 字母数字连续段(≥2 字符)整体成词;CJK 连续段切 2-gram。
+     * 中文无空格,整串子串匹配会漏召,bigram 是小语料下不依赖词典的简单折中。去重保序。
+     */
+    private List<String> tokenizeForMatch(String text) {
+        if (text == null || text.isBlank()) return List.of();
+        String t = text.toLowerCase();
+        java.util.LinkedHashSet<String> tokens = new java.util.LinkedHashSet<>();
+        StringBuilder word = new StringBuilder();
+        StringBuilder cjk = new StringBuilder();
+        for (int i = 0; i < t.length(); i++) {
+            char c = t.charAt(i);
+            boolean isCjk = c >= 0x4e00 && c <= 0x9fff;
+            boolean isAlnum = !isCjk && Character.isLetterOrDigit(c);
+            if (isCjk) {
+                cjk.append(c);
+                flushWord(tokens, word);
+            } else if (isAlnum) {
+                word.append(c);
+                flushCjk(tokens, cjk);
+            } else {
+                flushWord(tokens, word);
+                flushCjk(tokens, cjk);
+            }
+        }
+        flushWord(tokens, word);
+        flushCjk(tokens, cjk);
+        return new ArrayList<>(tokens);
+    }
+
+    private void flushWord(java.util.Set<String> tokens, StringBuilder word) {
+        if (word.length() >= 2) tokens.add(word.toString());
+        word.setLength(0);
+    }
+
+    private void flushCjk(java.util.Set<String> tokens, StringBuilder cjk) {
+        String run = cjk.toString();
+        cjk.setLength(0);
+        if (run.isEmpty()) return;
+        if (run.length() == 1) {
+            tokens.add(run);
+            return;
+        }
+        for (int i = 0; i + 1 < run.length(); i++) tokens.add(run.substring(i, i + 2));
+    }
+
     /** 写入用:null/blank → 默认 doc;非法值 → 400。 */
     private String normalizeCategory(String category) {
         if (category == null || category.isBlank()) return DEFAULT_CATEGORY;

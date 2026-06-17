@@ -4,6 +4,7 @@ import com.potato.archgraph.ArchGraphDtos.Graph;
 import com.potato.archgraph.ArchGraphService;
 import com.potato.requirement.Requirement;
 import com.potato.requirement.RequirementRepository;
+import com.potato.requirement.Structured;
 import com.potato.run.RunDtos.AdvanceResult;
 import com.potato.run.RunDtos.DocInject;
 import com.potato.run.RunDtos.PrevStep;
@@ -43,6 +44,9 @@ public class RunService {
             new StepDef("wrap_up", "收尾沉淀 + 回标"));
 
     private static final Set<String> VALID_STEP_STATUS = Set.of("done", "skipped");
+
+    /** 注入候选数量上限(asset/experience 按相关性取 TopK,余下交 LLM 自检索)。 */
+    private static final int INJECT_TOP_K = 5;
 
     private final SopRunRepository runRepository;
     private final RequirementRepository requirementRepository;
@@ -180,9 +184,9 @@ public class RunService {
             }
             // 必读类:standard 全文直接注入
             case "inject_standard" -> fullText("standard");
-            // 检索类:只返元数据列表,LLM 挑选后再 fetch_doc 取全文
-            case "find_assets" -> metaList("asset");
-            case "find_experience" -> metaList("experience");
+            // 检索类:按需求关键词相关性召回 TopK 候选(非分类全量),LLM 挑选后 fetch_doc 取全文;不足可自检索
+            case "find_assets" -> rankedMetaList(run, "asset");
+            case "find_experience" -> rankedMetaList(run, "experience");
             default -> List.of();
         };
     }
@@ -195,12 +199,42 @@ public class RunService {
         return out;
     }
 
-    private List<DocInject> metaList(String category) {
+    /**
+     * 按需求关键词相关性召回该分类的 TopK 候选(替代旧的"空查询全量"),并附一条兜底提示。
+     * 相关度来自 WikiService.searchRanked(OR + 字段加权 + 中文 bigram);语义不足时 LLM 可自行 search_knowledge。
+     */
+    private List<DocInject> rankedMetaList(SopRun run, String category) {
+        Requirement req = requirementRepository.findById(run.getReqId()).orElse(null);
+        String query = req != null ? buildReqQuery(req) : "";
         List<DocInject> out = new ArrayList<>();
-        for (WikiPage p : wikiService.search("", MatchMode.FUZZY, false, category)) {
+        for (WikiPage p : wikiService.searchRanked(query, category, INJECT_TOP_K)) {
             out.add(new DocInject(category, p.getPath(), p.getTitle(), brief(p.getContent()), null));
         }
+        // 兜底提示(ref=null 不计入 step.injectedDocs):平台只给相关 TopK,不足/不相关请 LLM 自检索
+        out.add(new DocInject("guide", null, "检索提示",
+                "以上为按需求关键词召回的 Top" + INJECT_TOP_K + " 个 " + category
+                        + " 候选(可能为空)。若不足或不相关,请用 search_knowledge(category=\"" + category
+                        + "\", q=…) 自行补检,再 fetch_doc 取全文。", null));
         return out;
+    }
+
+    /** 从需求拼检索查询:标题 + 模块名/描述 + 用户故事(供 searchRanked 分词召回)。 */
+    private String buildReqQuery(Requirement req) {
+        StringBuilder sb = new StringBuilder();
+        if (req.getTitle() != null) sb.append(req.getTitle()).append(' ');
+        Structured s = req.getStructured();
+        if (s != null) {
+            if (s.getModules() != null) {
+                for (Structured.Module m : s.getModules()) {
+                    if (m.getName() != null) sb.append(m.getName()).append(' ');
+                    if (m.getDescription() != null) sb.append(m.getDescription()).append(' ');
+                }
+            }
+            if (s.getUserStories() != null) {
+                for (String us : s.getUserStories()) sb.append(us).append(' ');
+            }
+        }
+        return sb.toString().trim();
     }
 
     private String brief(String content) {
