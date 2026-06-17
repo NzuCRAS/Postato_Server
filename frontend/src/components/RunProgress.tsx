@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react'
 import { Card, Empty, Space, Spin, Steps, Tag, Typography } from 'antd'
 import { CheckCircleOutlined, MinusCircleOutlined } from '@ant-design/icons'
+import { useNavigate } from 'react-router-dom'
 import { getRun } from '../api/run'
 import type { SopRunItem, RunStepItem } from '../types'
 
@@ -13,7 +14,7 @@ const RUN_STATUS: Record<string, { color: string; label: string }> = {
   aborted: { color: 'default', label: '已中止' },
 }
 
-function StepDesc({ s }: { s: RunStepItem }) {
+function StepDesc({ s, onOpenDoc }: { s: RunStepItem; onOpenDoc: (path: string) => void }) {
   return (
     <div style={{ fontSize: 12 }}>
       {s.note && <div style={{ whiteSpace: 'pre-wrap' }}>{s.note}</div>}
@@ -21,7 +22,21 @@ function StepDesc({ s }: { s: RunStepItem }) {
       {s.injected_docs && s.injected_docs.length > 0 && (
         <div style={{ marginTop: 4 }}>
           <Text type="secondary">注入文档:</Text>
-          {s.injected_docs.map((d) => <Tag key={d} style={{ marginInlineStart: 4 }}>{d}</Tag>)}
+          {s.injected_docs.map((d) =>
+            // 路径类(以 / 开头)可跳到对应文档;非路径(如需求 id)保持纯文本
+            d.startsWith('/') ? (
+              <Tag
+                key={d}
+                color="blue"
+                style={{ marginInlineStart: 4, cursor: 'pointer' }}
+                onClick={() => onOpenDoc(d)}
+              >
+                {d}
+              </Tag>
+            ) : (
+              <Tag key={d} style={{ marginInlineStart: 4 }}>{d}</Tag>
+            ),
+          )}
         </div>
       )}
     </div>
@@ -29,6 +44,7 @@ function StepDesc({ s }: { s: RunStepItem }) {
 }
 
 export default function RunProgress({ reqId }: { reqId: string }) {
+  const navigate = useNavigate()
   const [run, setRun] = useState<SopRunItem | null>(null)
   const [loading, setLoading] = useState(true)
 
@@ -58,7 +74,7 @@ export default function RunProgress({ reqId }: { reqId: string }) {
       status: stepStatus as 'finish' | 'process' | 'wait',
       icon: s.status === 'skipped' ? <MinusCircleOutlined style={{ color: '#bfbfbf' }} />
         : s.status === 'done' ? <CheckCircleOutlined style={{ color: '#52c41a' }} /> : undefined,
-      description: <StepDesc s={s} />,
+      description: <StepDesc s={s} onOpenDoc={(path) => navigate(`/wiki?path=${encodeURIComponent(path)}`)} />,
     }
   })
 
